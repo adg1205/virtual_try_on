@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="club-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fae082"/>
+      <stop offset="50%" stop-color="#dfb743"/>
+      <stop offset="100%" stop-color="#b88a24"/>
+    </linearGradient>
+    <linearGradient id="club-tortoise" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5c3818"/>
+      <stop offset="25%" stop-color="#3b1f0c"/>
+      <stop offset="50%" stop-color="#8a531e"/>
+      <stop offset="75%" stop-color="#2c1608"/>
+      <stop offset="100%" stop-color="#6b4019"/>
+    </linearGradient>
+    <filter id="club-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#club-shadow)">
+    <!-- Gold Bridge -->
+    <path d="M 226 84 Q 250 72 274 84" fill="none" stroke="url(#club-gold)" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Bottom Gold Wire Rims -->
+    <path d="M 226 84 C 226 142 195 158 152 158 C 108 158 84 136 80 96" fill="none" stroke="url(#club-gold)" stroke-width="4.5"/>
+    <path d="M 274 84 C 274 142 305 158 348 158 C 392 158 416 136 420 96" fill="none" stroke="url(#club-gold)" stroke-width="4.5"/>
+
+    <!-- Thick Tortoise Browline Tops -->
+    <path d="M 228 84 
+             C 228 66 182 56 128 58 
+             C 74 60 62 76 60 92 
+             C 72 96 82 96 90 92 
+             C 106 72 178 72 228 84 Z" 
+          fill="url(#club-tortoise)" stroke="#2b1406" stroke-width="1.5" stroke-linejoin="round"/>
+
+    <path d="M 272 84 
+             C 272 66 318 56 372 58 
+             C 426 60 438 76 440 92 
+             C 428 96 418 96 410 92 
+             C 394 72 322 72 272 84 Z" 
+          fill="url(#club-tortoise)" stroke="#2b1406" stroke-width="1.5" stroke-linejoin="round"/>
+
+    <!-- Corner Gold Pins -->
+    <circle cx="78" cy="74" r="2.5" fill="url(#club-gold)"/>
+    <circle cx="422" cy="74" r="2.5" fill="url(#club-gold)"/>
+
+    <!-- Nose Pads -->
+    <ellipse cx="235" cy="112" rx="3.5" ry="8" transform="rotate(16 235 112)" fill="#e2e8f0" fill-opacity="0.8" stroke="#b88a24" stroke-width="1.5"/>
+    <ellipse cx="265" cy="112" rx="3.5" ry="8" transform="rotate(-16 265 112)" fill="#e2e8f0" fill-opacity="0.8" stroke="#b88a24" stroke-width="1.5"/>
+  </g>
+</svg>

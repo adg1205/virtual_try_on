@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+<%
+function parseAsUTC(dateStr) {
+    if (!dateStr) return new Date();
+    let iso = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+    if (!iso.endsWith('Z') && !iso.includes('+')) {
+        iso += 'Z';
+    }
+    return new Date(iso);
+}
+
+function formatBDDate(dateStr) {
+    const d = parseAsUTC(dateStr);
+    return d.toLocaleDateString('en-US', {
+        timeZone: 'Asia/Dhaka',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function formatBDTime(dateStr) {
+    const d = parseAsUTC(dateStr);
+    return d.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Dhaka',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+%>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center flex-wrap gap-3">
+            <div>
+                <h2>Try-On History</h2>
+                <p class="text-muted-custom mt-1">
+                    Review, reuse, or delete your saved virtual try-on looks.
+                </p>
+            </div>
+            <% if (history && history.length > 0) { %>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="history-count-badge">
+                        <%= history.length %> Saved Look<%= history.length > 1 ? 's' : '' %>
+                    </span>
+                    <a href="/customer/virtual-try-on" class="btn btn-primary btn-sm rounded-pill px-3 py-2">
+                        ✨ New Try-On
+                    </a>
+                </div>
+            <% } %>
+        </div>
+
+        <div class="dashboard-body mt-4">
+            <!-- Vue Island: TryOnHistory -->
+            <div
+                id="vue-tryon-history"
+                data-vue-component="TryOnHistory"
+                data-vue-props='<%- JSON.stringify({ initialHistory: history || [] }) %>'
+            >
+                <!-- SSR Fallback -->
+                <% if (!history || history.length === 0) { %>
+                    <div class="glass-panel text-center mx-auto my-4 rounded-4 p-5">
+                        <div class="fs-1 mb-3">👓</div>
+                        <h3 class="font-weight-700 text-white mb-2 fs-4">No Saved Try-On Looks Yet</h3>
+                        <p class="text-muted-custom small mx-auto mb-4">
+                            Experience how frames look on your face! Select any glasses from our catalog and save your try-on results.
+                        </p>
+                        <a href="/customer/frame-catalog" class="btn btn-primary">Browse Frame Catalog</a>
+                    </div>
+                <% } else { %>
+                    <div class="desktop-history-view glass-panel">
+                        <p class="text-white p-3"><%= history.length %> saved try-on look(s) recorded.</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

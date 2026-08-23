@@ -1,0 +1,69 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>Payment Status</h2>
+        </div>
+
+        <div class="dashboard-body mt-4">
+            <div class="glass-panel mx-auto text-center ps-card">
+                
+                <div class="success-icon-wrapper ps-icon-wrapper">
+                    ✓
+                </div>
+
+                <h3 class="ps-title">
+                    Payment Successful!
+                </h3>
+                <p class="ps-subtitle">
+                    Thank you! Your payment has been verified and your order has been placed successfully.
+                </p>
+
+                <!-- PAYMENT TRANSACTION SUMMARY CARD -->
+                <div class="ps-summary-card">
+                    
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 ps-summary-row">
+                        <span class="ps-summary-label">Order Reference</span>
+                        <strong class="ps-summary-val">#<%= order ? order.order_number : 'N/A' %></strong>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 ps-summary-row">
+                        <span class="ps-summary-label">Transaction ID</span>
+                        <code class="text-break ps-txid-badge"><%= transactionId %></code>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 ps-summary-row">
+                        <span class="ps-summary-label">Payment Method</span>
+                        <span class="ps-method-text"><%= paymentMethod %></span>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 ps-summary-row">
+                        <span class="ps-summary-label">Payment Time</span>
+                        <span class="ps-time-text"><%= new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) %></span>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 pt-2">
+                        <span class="text-white font-weight-700 fs-6">Amount Paid</span>
+                        <span class="text-success font-weight-800 fs-4">৳<%= amount ? amount.toFixed(2) : '0.00' %></span>
+                    </div>
+
+                </div>
+
+                <!-- ACTION BUTTONS -->
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <% if (order) { %>
+                        <a href="/customer/order-tracking/<%= order.id %>?placed=1" class="btn btn-primary rounded-pill px-4 py-2 font-weight-700" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                            📍 Track Order
+                        </a>
+                    <% } %>
+                    <a href="/customer/frame-catalog" class="btn btn-secondary rounded-pill px-4 py-2">
+                        👓 Shop More Frames
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,55 @@
+<aside class="sidebar">
+    <div class="sidebar-header d-flex align-items-center justify-content-between gap-2">
+        <h3>Admin Panel</h3>
+        <button class="btn btn-sm btn-secondary sidebar-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#adminSidebarMenu" aria-controls="adminSidebarMenu" aria-expanded="false" aria-label="Toggle admin navigation">
+            <span aria-hidden="true">&#9776;</span>
+        </button>
+    </div>
+    <div class="collapse d-lg-block sidebar-menu" id="adminSidebarMenu">
+    <nav class="sidebar-nav nav flex-column">
+        <a href="/admin/dashboard" class="sidebar-link<%= currentPage === 'dashboard' ? ' active' : '' %>">
+            <span class="sidebar-icon">📊</span> Dashboard
+        </a>
+        <div class="sidebar-section-title">Catalog</div>
+        <a href="/admin/manage-frames" class="sidebar-link<%= currentPage === 'manage-frames' ? ' active' : '' %>">
+            <span class="sidebar-icon">👓</span> Manage Frames
+        </a>
+        <a href="/admin/add-frame" class="sidebar-link<%= currentPage === 'add-frame' ? ' active' : '' %>">
+            <span class="sidebar-icon">➕</span> Add Frame
+        </a>
+        <a href="/admin/manage-categories" class="sidebar-link<%= currentPage === 'manage-categories' ? ' active' : '' %>">
+            <span class="sidebar-icon">🏷️</span> Manage Categories
+        </a>
+        <a href="/admin/manage-stock" class="sidebar-link<%= currentPage === 'manage-stock' ? ' active' : '' %>">
+            <span class="sidebar-icon">📦</span> Manage Stock
+        </a>
+        <a href="/admin/manage-lens-options" class="sidebar-link<%= currentPage === 'manage-lens-options' ? ' active' : '' %>">
+            <span class="sidebar-icon">🔍</span> Manage Lens Options
+        </a>
+        <div class="sidebar-section-title">Operations</div>
+        <a href="/admin/manage-orders" class="sidebar-link<%= currentPage === 'manage-orders' ? ' active' : '' %>">
+            <span class="sidebar-icon">📋</span> Manage Orders
+        </a>
+        <a href="/admin/manage-payments" class="sidebar-link<%= currentPage === 'manage-payments' ? ' active' : '' %>">
+            <span class="sidebar-icon">💳</span> Manage Payments
+        </a>
+        <a href="/admin/manage-customers" class="sidebar-link<%= currentPage === 'manage-customers' ? ' active' : '' %>">
+            <span class="sidebar-icon">👥</span> Manage Customers
+        </a>
+        <a href="/admin/manage-store-locations" class="sidebar-link<%= currentPage === 'manage-store-locations' ? ' active' : '' %>">
+            <span class="sidebar-icon">📍</span> Store Locations
+        </a>
+        <div class="sidebar-section-title">Insights</div>
+        <a href="/admin/reports-analytics" class="sidebar-link<%= currentPage === 'reports-analytics' ? ' active' : '' %>">
+            <span class="sidebar-icon">📈</span> Reports & Analytics
+        </a>
+        <div class="sidebar-section-title">Account</div>
+        <a href="/admin/profile" class="sidebar-link<%= currentPage === 'profile' ? ' active' : '' %>">
+            <span class="sidebar-icon">👤</span> My Profile
+        </a>
+        <a href="/logout" class="sidebar-link sidebar-logout">
+            <span class="sidebar-icon">🚪</span> Logout
+        </a>
+    </nav>
+    </div>
+</aside>

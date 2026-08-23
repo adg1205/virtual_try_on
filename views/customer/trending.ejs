@@ -1,0 +1,196 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h2>🔥 Trending & Popular Indicators</h2>
+                <p class="text-muted-custom mt-1">
+                    Real customer activity metrics over a rolling 30-day window across the platform.
+                </p>
+            </div>
+            <span class="trending-window-badge">
+                📅 Rolling 30-Day Window
+            </span>
+        </div>
+
+        <div class="dashboard-body d-flex flex-column gap-4">
+
+            <!-- TOP ROW: MOST TRIED & MOST WISHLISTED -->
+            <div class="gap-4 trending-leaderboards-grid">
+                
+                <!-- LEADERBOARD 1: MOST TRIED -->
+                <div class="glass-panel trending-panel">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h3 class="trending-panel-title">
+                            <span>📸</span> Most Tried Frames
+                        </h3>
+                        <span class="trending-tag-tryon">Try-On Activity</span>
+                    </div>
+
+                    <% if (!mostTried || mostTried.length === 0) { %>
+                        <div class="text-center py-4 text-muted">
+                            <span class="fs-2">📸</span>
+                            <p class="mt-2 small">No try-on history recorded in the last 30 days.</p>
+                        </div>
+                    <% } else { %>
+                        <div class="d-flex flex-column gap-2">
+                            <% const medals = ['🥇', '🥈', '🥉', '#4', '#5']; %>
+                            <% mostTried.forEach((item, index) => { %>
+                                <div class="d-flex align-items-center gap-2 trending-item-row">
+                                    <span class="trending-medal"><%= medals[index] %></span>
+                                    <div class="trending-img-thumb">
+                                        <img src="<%= item.image_url %>" alt="<%= item.name %>" class="img-fluid">
+                                    </div>
+                                    <div class="flex-grow-1 text-truncate">
+                                        <h4 class="trending-item-name"><%= item.name %></h4>
+                                        <span class="trending-item-meta"><%= item.brand %> • <%= item.shape %></span>
+                                    </div>
+                                    <div class="text-end flex-shrink-0">
+                                        <span class="trending-count-badge-tryon">
+                                            📸 <%= item.tryon_count %> try-ons
+                                        </span>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+
+                <!-- LEADERBOARD 2: MOST WISHLISTED -->
+                <div class="glass-panel trending-panel">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h3 class="trending-panel-title">
+                            <span>❤️</span> Most Wishlisted Frames
+                        </h3>
+                        <span class="trending-tag-wishlist">Wishlist Demand</span>
+                    </div>
+
+                    <% if (!mostWishlisted || mostWishlisted.length === 0) { %>
+                        <div class="text-center py-4 text-muted">
+                            <span class="fs-2">❤️</span>
+                            <p class="mt-2 small">No wishlist additions recorded in the last 30 days.</p>
+                        </div>
+                    <% } else { %>
+                        <div class="d-flex flex-column gap-2">
+                            <% const medals = ['🥇', '🥈', '🥉', '#4', '#5']; %>
+                            <% mostWishlisted.forEach((item, index) => { %>
+                                <div class="d-flex align-items-center gap-2 trending-item-row">
+                                    <span class="trending-medal"><%= medals[index] %></span>
+                                    <div class="trending-img-thumb">
+                                        <img src="<%= item.image_url %>" alt="<%= item.name %>" class="img-fluid">
+                                    </div>
+                                    <div class="flex-grow-1 text-truncate">
+                                        <h4 class="trending-item-name"><%= item.name %></h4>
+                                        <span class="trending-item-meta"><%= item.brand %> • ৳<%= item.price.toFixed(2) %></span>
+                                    </div>
+                                    <div class="text-end flex-shrink-0">
+                                        <span class="trending-count-badge-wishlist">
+                                            ❤️ <%= item.wishlist_count %> wishlisted
+                                        </span>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- BOTTOM ROW: TRENDING SHAPES & FREQUENTLY COMPARED -->
+            <div class="gap-4 trending-leaderboards-grid">
+                
+                <!-- LEADERBOARD 3: TRENDING SHAPES -->
+                <div class="glass-panel trending-panel">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h3 class="trending-panel-title">
+                            <span>🔷</span> Trending Frame Shapes
+                        </h3>
+                        <span class="trending-tag-shape">Combined Volume</span>
+                    </div>
+
+                    <% if (!trendingShapes || trendingShapes.length === 0) { %>
+                        <div class="text-center py-4 text-muted">
+                            <span class="fs-2">🔷</span>
+                            <p class="mt-2 small">No shape interactions recorded in the last 30 days.</p>
+                        </div>
+                    <% } else { %>
+                        <% const maxActivity = trendingShapes[0].total_activity || 1; %>
+                        <div class="d-flex flex-column gap-3">
+                            <% trendingShapes.forEach((s, index) => { %>
+                                <% const pct = Math.round((s.total_activity / maxActivity) * 100); %>
+                                <div class="trending-shape-row">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="font-weight-700 text-white small">
+                                            <%= index + 1 %>. <%= s.shape %>
+                                        </span>
+                                        <span class="small font-weight-700 text-secondary-custom">
+                                            <%= s.total_activity %> interactions
+                                        </span>
+                                    </div>
+                                    <!-- Progress Bar -->
+                                    <div class="trending-progress-bg">
+                                        <div class="trending-progress-fill" data-progress="<%= pct %>"></div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+
+                <!-- LEADERBOARD 4: FREQUENTLY COMPARED PAIRS -->
+                <div class="glass-panel trending-panel">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h3 class="trending-panel-title">
+                            <span>⚖️</span> Frequently Compared Frames
+                        </h3>
+                        <span class="trending-tag-compare">Comparison History</span>
+                    </div>
+
+                    <% if (!comparedPairs || comparedPairs.length === 0) { %>
+                        <div class="text-center py-4 text-muted">
+                            <span class="fs-2">⚖️</span>
+                            <p class="mt-2 small">No frame comparisons recorded in the last 30 days.</p>
+                            <a href="/customer/compare-frames" class="btn btn-secondary btn-sm mt-2 small">Start Comparing Frames</a>
+                        </div>
+                    <% } else { %>
+                        <div class="d-flex flex-column gap-2">
+                            <% comparedPairs.forEach((pair, index) => { %>
+                                <div class="trending-pair-row">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <!-- Frame 1 -->
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate">
+                                            <div class="trending-pair-thumb">
+                                                <img src="<%= pair.f1_image %>" alt="<%= pair.f1_name %>" class="img-fluid">
+                                            </div>
+                                            <span class="small font-weight-600 text-truncate"><%= pair.f1_name %></span>
+                                        </div>
+
+                                        <!-- VS Badge -->
+                                        <span class="trending-pair-vs">VS</span>
+
+                                        <!-- Frame 2 -->
+                                        <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate justify-content-end">
+                                            <span class="small font-weight-600 text-truncate text-end"><%= pair.f2_name %></span>
+                                            <div class="trending-pair-thumb">
+                                                <img src="<%= pair.f2_image %>" alt="<%= pair.f2_name %>" class="img-fluid">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary border-opacity-25 small text-muted-custom">
+                                        <span>⚡ Compared <strong><%= pair.compare_count %></strong> times</span>
+                                        <a href="/customer/compare-frames" class="text-primary-custom text-decoration-underline font-weight-600">Compare Now →</a>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<script src="/js/trending.js" defer></script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,191 @@
+/*
+ * Bootstrap 5 integration layer.
+ *
+ * Bootstrap supplies the responsive layout, form, table, navigation, and utility
+ * foundation. These overrides retain the existing dark glass visual identity and
+ * isolate Bootstrap's defaults from camera canvases and feature-specific controls.
+ */
+
+.bootstrap-app {
+    --bs-body-bg: var(--bg-color);
+    --bs-body-color: var(--text-color);
+    --bs-primary: var(--primary-color);
+    --bs-primary-rgb: 99, 102, 241;
+    --bs-secondary: #64748b;
+    --bs-secondary-rgb: 100, 116, 139;
+    --bs-success: #10b981;
+    --bs-danger: #ef4444;
+    --bs-border-color: var(--glass-border);
+    --bs-emphasis-color: var(--text-color);
+    --bs-secondary-color: var(--text-muted);
+    min-width: 0;
+}
+
+.app-navbar > .container-fluid {
+    min-width: 0;
+}
+
+.app-navbar .navbar-brand {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.app-navbar .navbar-brand:hover,
+.app-navbar .navbar-brand:focus {
+    color: #818cf8;
+}
+
+.app-navbar .navbar-toggler {
+    border-color: var(--glass-border);
+    padding: 0.5rem 0.65rem;
+}
+
+.app-navbar .navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.3);
+}
+
+.app-main,
+.dashboard-content,
+.dashboard-body,
+.table-responsive {
+    min-width: 0;
+}
+
+.bootstrap-app .card {
+    --bs-card-bg: var(--glass-bg);
+    --bs-card-color: var(--text-color);
+    --bs-card-border-color: var(--glass-border);
+    backdrop-filter: blur(16px);
+}
+
+.bootstrap-app .form-control,
+.bootstrap-app .form-select {
+    min-height: 44px;
+    border-color: var(--glass-border);
+    border-radius: 12px;
+    background-color: rgba(0, 0, 0, 0.22);
+    color: var(--text-color);
+}
+
+/* Legacy select themes used background shorthands, which otherwise remove
+   Bootstrap's accessible dropdown indicator while appearance is disabled. */
+.bootstrap-app .form-select {
+    padding-right: 2.25rem;
+    background-image: var(--bs-form-select-bg-img), var(--bs-form-select-bg-icon, none);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
+
+.bootstrap-app .form-control::placeholder {
+    color: rgba(203, 213, 225, 0.68);
+}
+
+.bootstrap-app .form-control:focus,
+.bootstrap-app .form-select:focus {
+    border-color: var(--primary-color);
+    background-color: rgba(0, 0, 0, 0.38);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.2);
+}
+
+.bootstrap-app .form-control:disabled,
+.bootstrap-app .form-control[readonly],
+.bootstrap-app .form-select:disabled {
+    background-color: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted);
+}
+
+.bootstrap-app .form-select option {
+    background: #0f172a;
+    color: var(--text-color);
+}
+
+.bootstrap-app .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-color);
+    --bs-table-border-color: var(--glass-border);
+    --bs-table-hover-bg: rgba(99, 102, 241, 0.08);
+    --bs-table-hover-color: var(--text-color);
+    margin-bottom: 0;
+}
+
+.bootstrap-app .table > :not(caption) > * > * {
+    background-color: transparent;
+    color: inherit;
+}
+
+.bootstrap-app .alert {
+    border-color: var(--glass-border);
+}
+
+.bootstrap-app .modal-content,
+.bootstrap-app .dropdown-menu,
+.bootstrap-app .offcanvas {
+    background-color: #111827;
+    color: var(--text-color);
+    border-color: var(--glass-border);
+}
+
+.bootstrap-app .btn-close {
+    filter: invert(1) grayscale(100%) brightness(180%);
+}
+
+.app-footer {
+    width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .app-navbar .navbar-collapse {
+        width: 100%;
+        padding-top: 1rem;
+    }
+
+    .app-navbar .nav-links {
+        align-items: stretch;
+        gap: 0.25rem;
+    }
+
+    .app-navbar .nav-link {
+        border-radius: 10px;
+        padding: 0.7rem 0.85rem;
+    }
+
+    .app-navbar .nav-link:hover,
+    .app-navbar .nav-link:focus {
+        background: rgba(99, 102, 241, 0.12);
+    }
+
+    .app-navbar .auth-buttons .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .glass-panel {
+        padding: 1.25rem;
+        border-radius: 18px;
+    }
+
+    .dashboard-content {
+        padding: 1rem;
+    }
+
+    .dashboard-header {
+        margin-bottom: 1.25rem;
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.45rem;
+    }
+
+    .bootstrap-app .btn {
+        min-height: 44px;
+    }
+
+    .bootstrap-app .table {
+        font-size: 0.82rem;
+    }
+}

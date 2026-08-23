@@ -1,0 +1,40 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>Customer Dashboard</h2>
+        </div>
+        <div class="dashboard-body">
+            
+            <div class="stats-grid">
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">📸</div>
+                    <div class="stat-info"><h3>Try-Ons</h3><p class="stat-number"><%= tryOnCount %></p></div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">❤️</div>
+                    <div class="stat-info"><h3>Wishlisted</h3><p class="stat-number"><%= wishlistCount %></p></div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-info"><h3>Orders</h3><p class="stat-number"><%= orderCount %></p></div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon">🛒</div>
+                    <div class="stat-info"><h3>In Cart</h3><p class="stat-number"><%= cartCount %></p></div>
+                </div>
+            </div>
+            <div class="quick-actions" style="margin-top: 2rem;">
+                <h3>Quick Actions</h3>
+                <div class="d-flex flex-wrap gap-3 mt-3">
+                    <a href="/customer/virtual-try-on" class="btn btn-primary">Start Try-On</a>
+                    <a href="/customer/for-you" class="btn btn-secondary">✨ For You</a>
+                    <a href="/customer/frame-catalog" class="btn btn-secondary">Browse Catalog</a>
+                    <a href="/customer/ai-recommendations" class="btn btn-secondary">AI Face Analysis</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<%- include('../partials/footer') %>

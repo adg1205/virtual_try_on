@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>My Wishlist</h2>
+            <p style="color: var(--text-muted); margin-top: 0.25rem; font-size: 0.95rem;">
+                Saved frames you love
+            </p>
+        </div>
+        <div class="dashboard-body">
+            <!-- Vue Island: WishlistGrid -->
+            <div
+                id="vue-wishlist"
+                data-vue-component="WishlistGrid"
+                data-vue-props='<%- JSON.stringify({ initialWishlist: frames || [] }) %>'
+            >
+                <!-- SSR Fallback -->
+                <div class="frame-catalog-grid" id="wishlistGrid">
+                    <% if (frames.length === 0) { %>
+                        <div class="catalog-empty-state" id="wishlistEmptyState">
+                            <span class="wishlist-empty-state-icon">❤️</span>
+                            <h3>Your wishlist is empty</h3>
+                            <p class="text-muted wishlist-empty-state-sub">Browse the catalog to add frames you love!</p>
+                            <a href="/customer/frame-catalog" class="btn btn-primary btn-sm wishlist-empty-state-btn">Explore Catalog</a>
+                        </div>
+                    <% } else { %>
+                        <% frames.forEach(frame => { %>
+                            <div class="frame-card glass-panel wishlist-card-item" id="card-<%= frame.id %>">
+                                <div class="frame-card-image-wrap">
+                                    <img src="<%= frame.image_url %>" alt="<%= frame.name %>" class="frame-card-img img-fluid">
+                                </div>
+                                <div class="frame-card-body">
+                                    <h3 class="frame-card-name"><%= frame.name %></h3>
+                                    <p class="frame-card-brand"><%= frame.brand %></p>
+                                    <p class="frame-card-price">৳<%= Number(frame.price).toFixed(2) %></p>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

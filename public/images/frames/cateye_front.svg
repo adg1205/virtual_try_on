@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="cateye-rose" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fda4af"/>
+      <stop offset="35%" stop-color="#f43f5e"/>
+      <stop offset="70%" stop-color="#be123c"/>
+      <stop offset="100%" stop-color="#9f1239"/>
+    </linearGradient>
+    <filter id="cateye-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#cateye-shadow)" fill="none" stroke="url(#cateye-rose)">
+    <!-- Bridge -->
+    <path d="M 226 94 Q 250 82 274 94" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Left Dramatic Upswept Cat-Eye Rim -->
+    <path d="M 226 94 
+             C 214 156 160 162 126 156 
+             C 90 148 76 118 72 90 
+             C 66 54 116 52 142 56 
+             C 178 62 216 72 226 94 Z" 
+          stroke-width="6.5" stroke-linejoin="round"/>
+
+    <!-- Left Wing Accent -->
+    <path d="M 72 90 Q 52 46 44 48 Q 96 46 142 56 Z" fill="url(#cateye-rose)" stroke="none"/>
+
+    <!-- Right Dramatic Upswept Cat-Eye Rim -->
+    <path d="M 274 94 
+             C 286 156 340 162 374 156 
+             C 410 148 424 118 428 90 
+             C 434 54 384 52 358 56 
+             C 322 62 284 72 274 94 Z" 
+          stroke-width="6.5" stroke-linejoin="round"/>
+
+    <!-- Right Wing Accent -->
+    <path d="M 428 90 Q 448 46 456 48 Q 404 46 358 56 Z" fill="url(#cateye-rose)" stroke="none"/>
+
+    <!-- Nose Pads -->
+    <ellipse cx="236" cy="116" rx="3.5" ry="8" transform="rotate(16 236 116)" fill="#fecdd3" fill-opacity="0.8" stroke="#be123c" stroke-width="1.2"/>
+    <ellipse cx="264" cy="116" rx="3.5" ry="8" transform="rotate(-16 264 116)" fill="#fecdd3" fill-opacity="0.8" stroke="#be123c" stroke-width="1.2"/>
+  </g>
+</svg>

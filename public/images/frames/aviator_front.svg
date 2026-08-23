@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="aviator-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fae082"/>
+      <stop offset="30%" stop-color="#dfb743"/>
+      <stop offset="70%" stop-color="#b88a24"/>
+      <stop offset="100%" stop-color="#f5d76e"/>
+    </linearGradient>
+    <filter id="aviator-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#aviator-shadow)">
+    <!-- Top Brow Bar -->
+    <path d="M 175 62 Q 250 50 325 62" fill="none" stroke="url(#aviator-gold)" stroke-width="4.5" stroke-linecap="round"/>
+    
+    <!-- Nose Bridge -->
+    <path d="M 228 78 Q 250 68 272 78" fill="none" stroke="url(#aviator-gold)" stroke-width="5.5" stroke-linecap="round"/>
+
+    <!-- Left Teardrop Rim -->
+    <path d="M 228 78 C 225 50 170 50 125 62 C 85 72 82 125 105 160 C 128 188 198 175 228 118 Z"
+          fill="none" stroke="url(#aviator-gold)" stroke-width="5.5" stroke-linejoin="round"/>
+
+    <!-- Right Teardrop Rim -->
+    <path d="M 272 78 C 275 50 330 50 375 62 C 415 72 418 125 395 160 C 372 188 302 175 272 118 Z"
+          fill="none" stroke="url(#aviator-gold)" stroke-width="5.5" stroke-linejoin="round"/>
+
+    <!-- Left & Right Hinge Endpieces -->
+    <path d="M 88 78 L 65 77" fill="none" stroke="url(#aviator-gold)" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M 412 78 L 435 77" fill="none" stroke="url(#aviator-gold)" stroke-width="5.5" stroke-linecap="round"/>
+
+    <!-- Nose Pads -->
+    <ellipse cx="236" cy="115" rx="4" ry="9" transform="rotate(15 236 115)" fill="#e2e8f0" fill-opacity="0.75" stroke="#b88a24" stroke-width="1.5"/>
+    <ellipse cx="264" cy="115" rx="4" ry="9" transform="rotate(-15 264 115)" fill="#e2e8f0" fill-opacity="0.75" stroke="#b88a24" stroke-width="1.5"/>
+  </g>
+</svg>

@@ -1,0 +1,45 @@
+<%- include('partials/header') %>
+
+<section class="auth-section container-sm px-3 py-5">
+    <div class="auth-box glass-panel card text-light border-0 shadow-lg p-4 p-md-5">
+        <h2 class="card-title text-center">Sign Up</h2>
+        <form action="/signup" method="POST" enctype="multipart/form-data">
+            <div class="form-group mb-3">
+                <label for="full_name" class="form-label">Full Name *</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" autocomplete="name" required>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="email" class="form-label">Email *</label>
+                <input type="email" id="email" name="email" class="form-control" autocomplete="email" required>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="password" class="form-label">Password *</label>
+                <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" required>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="phone_number" class="form-label">Phone Number *</label>
+                <input type="text" id="phone_number" name="phone_number" class="form-control" autocomplete="tel" required>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="address" class="form-label">Address (Optional)</label>
+                <textarea id="address" name="address" rows="3" class="form-control" autocomplete="street-address"></textarea>
+            </div>
+
+            <div class="form-group mb-4">
+                <label for="profile_photo" class="form-label">Profile Photo (Optional)</label>
+                <input type="file" id="profile_photo" name="profile_photo" class="form-control" accept="image/*">
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-full w-100">Create Account</button>
+            </div>
+        </form>
+        <p class="auth-link">Already have an account? <a href="/login">Log in here</a>.</p>
+    </div>
+</section>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="sport-matte" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#374151"/>
+      <stop offset="50%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <filter id="sport-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#sport-shadow)" fill="none" stroke="url(#sport-matte)" stroke-linejoin="round">
+    <!-- Aerodynamic Continuous Top Brow -->
+    <path d="M 68 88 Q 150 48 250 56 Q 350 48 432 88" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- Left Shield Rim -->
+    <path d="M 250 64 Q 160 56 102 78 Q 80 134 165 146 Q 242 142 250 96 Z" stroke-width="7"/>
+
+    <!-- Right Shield Rim -->
+    <path d="M 250 64 Q 340 56 398 78 Q 420 134 335 146 Q 258 142 250 96 Z" stroke-width="7"/>
+
+    <!-- Hinge Connectors -->
+    <path d="M 72 88 L 48 86" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 428 88 L 452 86" stroke-width="8" stroke-linecap="round"/>
+
+    <!-- Rubberized Nose Grips -->
+    <path d="M 234 116 Q 250 102 266 116" stroke="#4b5563" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

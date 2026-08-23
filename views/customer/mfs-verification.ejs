@@ -1,0 +1,142 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>Payment Verification</h2>
+            <p class="text-muted-custom mt-1">
+                Complete the verification steps below to finalize your <%= paymentMethod === 'bkash' ? 'bKash' : 'Nagad' %> payment.
+            </p>
+        </div>
+
+        <div class="dashboard-body mt-4">
+
+            <!-- MFS VERIFICATION MODAL (auto-shown on page load) -->
+            <div id="mfsModalOverlay" class="mfs-modal-overlay">
+                <div id="mfsModalCard" class="shadow-lg mfs-modal-card">
+                    
+                    <!-- HEADER / BRAND BANNER -->
+                    <div id="mfsHeader" class="mfs-header <%= paymentMethod === 'bkash' ? 'mfs-header-bkash' : 'mfs-header-nagad' %>">
+                        <div class="mfs-header-sandbox-tag">
+                            SSLCommerz Sandbox — Account Verification
+                        </div>
+                        <h3 id="mfsTitle" class="mfs-title"><%= paymentMethod === 'bkash' ? 'bKash' : 'Nagad' %> Account Payment</h3>
+                        <div class="mfs-amount-badge">
+                            Amount: ৳<span id="mfsAmount"><%= amount %></span>
+                        </div>
+                        <div class="mfs-merchant-text">Merchant: Virtual Try-On</div>
+                    </div>
+
+                    <!-- MODAL BODY -->
+                    <div class="mfs-body">
+                        
+                        <!-- STEP PROGRESS INDICATOR -->
+                        <div class="mfs-progress-wrapper">
+                            <div class="mfs-progress-track"></div>
+                            <div id="mfsProgressLine" class="mfs-progress-line <%= paymentMethod === 'bkash' ? 'mfs-progress-bkash' : 'mfs-progress-nagad' %>"></div>
+                            
+                            <div class="mfs-step-indicator">
+                                <div id="circle1" class="mfs-step-circle <%= paymentMethod === 'bkash' ? 'mfs-active-bkash' : 'mfs-active-nagad' %>">1</div>
+                                <span class="mfs-step-label-active">Number</span>
+                            </div>
+                            
+                            <div class="mfs-step-indicator">
+                                <div id="circle2" class="mfs-step-circle">2</div>
+                                <span class="mfs-step-label">OTP</span>
+                            </div>
+                            
+                            <div class="mfs-step-indicator">
+                                <div id="circle3" class="mfs-step-circle">3</div>
+                                <span class="mfs-step-label">PIN</span>
+                            </div>
+                        </div>
+
+                        <!-- STEP 1: MOBILE NUMBER -->
+                        <div id="mfsStep1">
+                            <label class="form-label mfs-input-label">
+                                Your <%= paymentMethod === 'bkash' ? 'bKash' : 'Nagad' %> Account Number
+                            </label>
+                            <input type="tel" id="mfsAccountNumber" class="form-control mfs-input" placeholder="e.g. 01700000000" maxlength="11">
+                            <div class="mfs-hint-text">
+                                💡 Enter any 11-digit mobile number for sandbox testing.
+                            </div>
+                            <div id="mfsErr1" class="d-none mfs-error-text"></div>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="button" id="mfsNext1Btn" class="mfs-primary-btn <%= paymentMethod === 'bkash' ? 'mfs-btn-bkash' : 'mfs-btn-nagad' %>">
+                                    CONFIRM NUMBER →
+                                </button>
+                                <button type="button" id="mfsCancelBtn1" class="mfs-cancel-btn">
+                                    CANCEL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2: 6-DIGIT OTP -->
+                        <div id="mfsStep2" class="d-none">
+                            <label class="form-label mfs-input-label">
+                                Enter 6-Digit Verification Code (OTP)
+                            </label>
+                            <div class="mfs-otp-sub">
+                                Verification code sent to <strong id="mfsDisplayNumber" class="text-dark">017XXXX1234</strong>
+                            </div>
+                            <input type="text" id="mfsOtpCode" class="form-control mfs-input mfs-input-otp" placeholder="e.g. 123456" maxlength="6">
+                            <div class="d-flex justify-content-between align-items-center mt-2 small text-muted">
+                                <span>Didn't receive code?</span>
+                                <span class="text-primary font-weight-700">Resend OTP (0:45)</span>
+                            </div>
+                            <div id="mfsErr2" class="d-none mfs-error-text"></div>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="button" id="mfsNext2Btn" class="mfs-primary-btn <%= paymentMethod === 'bkash' ? 'mfs-btn-bkash' : 'mfs-btn-nagad' %>">
+                                    VERIFY OTP →
+                                </button>
+                                <button type="button" id="mfsCancelBtn2" class="mfs-cancel-btn">
+                                    CANCEL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: 5-DIGIT PIN -->
+                        <div id="mfsStep3" class="d-none">
+                            <label class="form-label mfs-input-label">
+                                Enter 5-Digit Account PIN
+                            </label>
+                            <input type="password" id="mfsPinCode" class="form-control mfs-input mfs-input-otp" placeholder="•••••" maxlength="5">
+                            <div class="mfs-hint-text d-flex align-items-center gap-1">
+                                🔒 <span>Your PIN is safe and encrypted in SSLCommerz Sandbox mode.</span>
+                            </div>
+                            <div id="mfsErr3" class="d-none mfs-error-text"></div>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="button" id="mfsSubmitBtn" class="mfs-primary-btn <%= paymentMethod === 'bkash' ? 'mfs-btn-bkash' : 'mfs-btn-nagad' %>">
+                                    CONFIRM PAYMENT ৳<%= amount %>
+                                </button>
+                                <button type="button" id="mfsCancelBtn3" class="mfs-cancel-btn">
+                                    CANCEL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PROCESSING SPINNER -->
+                        <div id="mfsProcessingState" class="d-none text-center py-4">
+                            <div class="mfs-processing-icon">⏳</div>
+                            <h4 class="mb-2 text-dark font-weight-800 fs-5">Verifying Payment...</h4>
+                            <p class="mb-0 text-muted small">Completing your transaction securely via SSLCommerz Sandbox...</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<script>
+    window.MFS_PAYMENT_METHOD = "<%= paymentMethod %>";
+    window.MFS_ENCODED_DATA = "<%= encodedData %>";
+</script>
+<script src="/js/mfs-verification.js" defer></script>
+
+<%- include('../partials/footer') %>

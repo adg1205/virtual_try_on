@@ -1,0 +1,70 @@
+/* ==========================================================================
+   Common Shared Components & Utilities
+   ========================================================================== */
+
+/* Toast Container & Notification */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast-notification {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    backdrop-filter: blur(12px);
+    animation: toast-in 0.3s ease-out;
+}
+
+.toast-notification.success {
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.toast-notification.error {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+@keyframes toast-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Animations */
+@keyframes pulse-opacity {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Text & Alignment Utilities */
+.text-muted-custom {
+    color: var(--text-muted, #9ca3af);
+}
+
+.font-weight-800 {
+    font-weight: 800;
+}
+
+.font-weight-700 {
+    font-weight: 700;
+}
+
+.font-weight-600 {
+    font-weight: 600;
+}

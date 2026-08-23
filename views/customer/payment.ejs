@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>Payment</h2>
+        </div>
+        <div class="dashboard-body">
+            <div class="glass-panel mx-auto text-center" style="max-width: 500px; margin-top: 2rem; margin-bottom: 2rem; padding: 3rem 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">💳</div>
+                <h3>Payment is integrated into Checkout</h3>
+                <p style="color: var(--text-muted, #9ca3af); margin-bottom: 1.5rem;">
+                    Please proceed to the checkout page to select your delivery address and payment method.
+                </p>
+                <a href="/customer/checkout" class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 50px;">
+                    Go to Checkout
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+<%- include('../partials/footer') %>

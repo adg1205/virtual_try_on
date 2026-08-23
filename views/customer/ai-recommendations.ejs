@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>AI Recommendations</h2>
+        </div>
+        <div class="dashboard-body">
+            <!-- Vue Island: AiRecommendations -->
+            <div
+                id="vue-ai-recommendations"
+                data-vue-component="AiRecommendations"
+                data-vue-props='<%- JSON.stringify({ catalogFrames: (typeof frames !== "undefined" ? frames : []) }) %>'
+            >
+                <!-- SSR Fallback -->
+                <div class="ai-capture-section glass-panel">
+                    <div class="ai-capture-header d-flex align-items-center gap-3">
+                        <span class="fs-1">🤖</span>
+                        <div>
+                            <h3 class="mb-0 fs-5">Personalized Frame Recommendations</h3>
+                            <p class="text-muted mt-1 mb-0 small">Upload a photo or use your camera so our AI can analyze your face shape and recommend the perfect frames.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

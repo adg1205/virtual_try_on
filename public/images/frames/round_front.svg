@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="round-silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="30%" stop-color="#cbd5e1"/>
+      <stop offset="70%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+    <filter id="round-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#round-shadow)">
+    <!-- Arched Bridge -->
+    <path d="M 218 96 Q 250 80 282 96" fill="none" stroke="url(#round-silver)" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Left Circular Rim -->
+    <circle cx="152" cy="108" r="64" fill="none" stroke="url(#round-silver)" stroke-width="6"/>
+
+    <!-- Right Circular Rim -->
+    <circle cx="348" cy="108" r="64" fill="none" stroke="url(#round-silver)" stroke-width="6"/>
+
+    <!-- Endpieces / Hinges -->
+    <path d="M 88 108 L 60 108" fill="none" stroke="url(#round-silver)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 412 108 L 440 108" fill="none" stroke="url(#round-silver)" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Silicone Nose Pads -->
+    <ellipse cx="228" cy="116" rx="3.5" ry="8" transform="rotate(18 228 116)" fill="#e2e8f0" fill-opacity="0.8" stroke="#94a3b8" stroke-width="1.5"/>
+    <ellipse cx="272" cy="116" rx="3.5" ry="8" transform="rotate(-18 272 116)" fill="#e2e8f0" fill-opacity="0.8" stroke="#94a3b8" stroke-width="1.5"/>
+  </g>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="geom-black" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <filter id="geom-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#geom-shadow)" fill="none" stroke="url(#geom-black)" stroke-linejoin="round">
+    <!-- Straight Architectural Bridge -->
+    <line x1="222" y1="84" x2="278" y2="84" stroke-width="6"/>
+
+    <!-- Left Hexagonal Rim -->
+    <polygon points="170,54 222,84 212,142 168,162 118,142 108,84" stroke-width="7"/>
+
+    <!-- Right Hexagonal Rim -->
+    <polygon points="330,54 278,84 288,142 332,162 382,142 392,84" stroke-width="7"/>
+
+    <!-- Endpieces / Hinges -->
+    <line x1="108" y1="84" x2="68" y2="84" stroke-width="6" stroke-linecap="round"/>
+    <line x1="392" y1="84" x2="432" y2="84" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Nose Pads -->
+    <ellipse cx="232" cy="112" rx="3.5" ry="8" transform="rotate(16 232 112)" fill="#94a3b8" fill-opacity="0.75" stroke="#475569" stroke-width="1.2"/>
+    <ellipse cx="268" cy="112" rx="3.5" ry="8" transform="rotate(-16 268 112)" fill="#94a3b8" fill-opacity="0.75" stroke="#475569" stroke-width="1.2"/>
+  </g>
+</svg>

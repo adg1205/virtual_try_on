@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center flex-wrap gap-3">
+            <div>
+                <h2>Compare Frames</h2>
+                <p class="text-muted-custom mt-1">
+                    Select two frames to compare try-on results, specs, availability, and AI style suggestions side-by-side.
+                </p>
+            </div>
+            <button id="resetCompareBtn" class="btn btn-secondary btn-sm compare-reset-btn" onclick="resetComparison()">
+                🔄 Change Frame Selection
+            </button>
+        </div>
+
+        <div class="dashboard-body mt-4">
+            <!-- Vue Island: CompareMatrix -->
+            <div
+                id="vue-compare"
+                data-vue-component="CompareMatrix"
+                data-vue-props='<%- JSON.stringify({ allFrames: frames || [], initialFrames: [] }) %>'
+            >
+                <!-- SSR Fallback -->
+                <div class="glass-panel compare-selection-section">
+                    <h3 class="compare-selection-title"><span>⚖️</span> Frame Comparison Matrix</h3>
+                    <p class="text-muted-custom small">Compare any two frames side-by-side with live specs, fit metrics, and AI stylist pairing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

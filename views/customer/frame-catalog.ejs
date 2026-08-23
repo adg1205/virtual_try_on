@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <h2>Frame Catalog</h2>
+            <p style="color: var(--text-muted); margin-top: 0.25rem; font-size: 0.95rem;">
+                <%= frames.length %> frame<%= frames.length !== 1 ? 's' : '' %> available
+            </p>
+        </div>
+        <div class="dashboard-body">
+            <!-- Vue Island: FrameCatalogGrid -->
+            <div
+                id="vue-frame-catalog"
+                data-vue-component="FrameCatalogGrid"
+                data-vue-props='<%- JSON.stringify({ frames, wishlistIds: wishlistIds || [] }) %>'
+            >
+                <!-- SSR Fallback -->
+                <div class="frame-catalog-grid" id="frameCatalogGrid">
+                    <% frames.forEach(frame => { %>
+                        <div class="frame-card glass-panel">
+                            <div class="frame-card-image-wrap">
+                                <img src="<%= frame.image_url %>" alt="<%= frame.name %>" class="frame-card-img img-fluid">
+                            </div>
+                            <div class="frame-card-body">
+                                <h3 class="frame-card-name"><%= frame.name %></h3>
+                                <p class="frame-card-brand"><%= frame.brand %></p>
+                                <p class="frame-card-price">৳<%= Number(frame.price).toFixed(2) %></p>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

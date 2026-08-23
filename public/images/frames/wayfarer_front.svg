@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200">
+  <defs>
+    <linearGradient id="wayfarer-black" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2d3035"/>
+      <stop offset="35%" stop-color="#181a1d"/>
+      <stop offset="100%" stop-color="#0c0d0f"/>
+    </linearGradient>
+    <filter id="wayfarer-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#wayfarer-shadow)" fill="url(#wayfarer-black)" stroke="#383c42" stroke-width="1.5">
+    <!-- Main Outer Acetate Frame -->
+    <path d="M 230 82 
+             C 240 76 260 76 270 82 
+             C 290 85 340 72 410 65 
+             C 438 62 446 72 444 86 
+             C 440 114 416 162 355 162 
+             C 305 162 280 135 272 108 
+             C 264 96 236 96 228 108 
+             C 220 135 195 162 145 162 
+             C 84 162 60 114 56 86 
+             C 54 72 62 62 90 65 
+             C 160 72 210 85 230 82 Z
+             
+             M 100 80 
+             C 140 82 195 86 215 98 
+             C 215 125 188 145 145 145 
+             C 102 145 80 120 82 95 
+             C 83 85 90 80 100 80 Z
+             
+             M 400 80 
+             C 360 82 305 86 285 98 
+             C 285 125 312 145 355 145 
+             C 398 145 420 120 418 95 
+             C 417 85 410 80 400 80 Z" 
+          fill-rule="evenodd" stroke-linejoin="round"/>
+
+    <!-- Iconic Silver Corner Rivets -->
+    <ellipse cx="78" cy="74" rx="4" ry="2" transform="rotate(-15 78 74)" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+    <ellipse cx="422" cy="74" rx="4" ry="2" transform="rotate(15 422 74)" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+  </g>
+</svg>

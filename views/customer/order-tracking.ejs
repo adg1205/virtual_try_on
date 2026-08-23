@@ -1,0 +1,187 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center flex-wrap gap-3">
+            <div>
+                <h2>Order Tracking</h2>
+                <p class="text-muted-custom mt-1">
+                    Track delivery status and view order breakdown for <strong>#<%= order.order_number %></strong>.
+                </p>
+            </div>
+            <a href="/customer/my-orders" class="btn btn-secondary btn-sm rounded-pill px-3 py-2 small">
+                📋 Back to My Orders
+            </a>
+        </div>
+
+        <div class="dashboard-body mt-4">
+
+            <!-- SUCCESS BANNER IF JUST PLACED -->
+            <div id="orderPlacedSuccessBanner" class="d-none ot-success-banner">
+                🎉 <strong>Order Placed Successfully!</strong> Your order <strong>#<%= order.order_number %></strong> has been registered.
+            </div>
+
+            <!-- STATUS TRACKING TIMELINE -->
+            <div class="glass-panel ot-timeline-panel">
+                
+                <% if (order.status === 'Cancelled') { %>
+                    <div class="text-center py-2">
+                        <div class="fs-1 mb-2">❌</div>
+                        <h3 class="text-danger fs-5 font-weight-700 mb-1">Order Cancelled</h3>
+                        <p class="text-muted-custom small">This order was cancelled and is no longer being processed.</p>
+                    </div>
+                <% } else { %>
+                    <% 
+                        const stages = ['Placed', 'Processing', 'Shipped', 'Delivered'];
+                        const currentIdx = stages.indexOf(order.status) !== -1 ? stages.indexOf(order.status) : 0;
+                        const progressPct = (currentIdx / (stages.length - 1)) * 100;
+                    %>
+                    <div class="tracking-timeline-container">
+                        <div class="tracking-timeline-track">
+                            <div class="tracking-timeline-progress" style="width: <%= progressPct %>%;"></div>
+                        </div>
+                        <div class="tracking-steps-row">
+                            <% stages.forEach((stage, idx) => { %>
+                                <div class="tracking-step <%= idx < currentIdx ? 'completed' : (idx === currentIdx ? 'current' : 'upcoming') %>">
+                                    <div class="tracking-dot-wrapper">
+                                        <div class="tracking-dot">
+                                            <% if (idx < currentIdx) { %>
+                                                <span class="dot-check">✓</span>
+                                            <% } else if (idx === currentIdx) { %>
+                                                <span class="dot-pulse-ring"></span>
+                                                <span class="dot-current-core"></span>
+                                            <% } else { %>
+                                                <span class="dot-num"><%= idx + 1 %></span>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                    <div class="tracking-label-box">
+                                        <span class="tracking-label-name"><%= stage %></span>
+                                        <% if (idx === currentIdx) { %>
+                                            <span class="tracking-current-badge">Current</span>
+                                        <% } else if (idx < currentIdx) { %>
+                                            <span class="tracking-completed-badge">Done</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    </div>
+                <% } %>
+
+            </div>
+
+            <!-- DETAILS GRID -->
+            <div class="order-details-grid">
+                
+                <!-- LEFT: Items List -->
+                <div class="glass-panel ot-details-panel">
+                    <h3 class="ot-panel-title">
+                        📦 Order Items (<%= order.items ? order.items.length : 0 %>)
+                    </h3>
+
+                    <div class="d-flex flex-column gap-3">
+                        <% if (order.items && order.items.length > 0) { %>
+                            <% order.items.forEach(item => { %>
+                                <div class="order-item-card ot-item-row">
+                                    <div class="ot-item-thumb">
+                                        <img src="<%= item.image_url %>" alt="<%= item.frame_name %>" class="img-fluid" style="width: 85%; height: 85%; object-fit: contain;">
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="font-weight-700 text-white small"><%= item.frame_name %></div>
+                                        <div class="small text-muted-custom mt-1">
+                                            <%= item.brand %> • <%= item.selected_variant || 'Standard' %>
+                                        </div>
+                                        <div class="small text-info mt-1">
+                                            🔍 <%= item.lens_option %>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-white-50"><%= item.quantity %> × ৳<%= item.unit_price.toFixed(2) %></div>
+                                        <div class="font-weight-800 text-secondary-custom mt-1 fs-6">
+                                            ৳<%= item.line_total.toFixed(2) %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Shipping & Billing Details -->
+                <div class="glass-panel ot-details-panel">
+                    <h3 class="ot-panel-title">
+                        📍 Delivery & Payment Details
+                    </h3>
+
+                    <div class="d-flex flex-column gap-3 small">
+                        <div>
+                            <span class="ot-field-label">Delivery Address</span>
+                            <p class="text-break mt-1 mb-0 text-white" style="line-height: 1.5;"><%= order.delivery_address %></p>
+                        </div>
+
+                        <div>
+                            <span class="ot-field-label">Contact Number</span>
+                            <p class="mt-1 mb-0 text-white"><%= order.contact_number %></p>
+                        </div>
+
+                        <div>
+                            <span class="ot-field-label">Payment Method</span>
+                            <p class="mt-1 mb-0 text-info text-uppercase font-weight-700">
+                                <%= order.payment_method %> 
+                                <% if (order.payment_status === 'paid') { %>
+                                    <span class="ot-badge-paid">Paid</span>
+                                <% } else { %>
+                                    <span class="ot-badge-unpaid">Unpaid (COD)</span>
+                                <% } %>
+                            </p>
+                        </div>
+
+                        <% if (order.payment) { %>
+                            <div class="ot-tx-summary-card">
+                                <div class="ot-tx-title">Transaction Summary</div>
+                                <div class="text-white-50 mb-1">
+                                    <strong class="text-white">TxID:</strong> <code class="text-break text-primary-custom"><%= order.payment.transaction_id %></code>
+                                </div>
+                                <div class="text-white-50 mb-1">
+                                    <strong class="text-white">Gateway:</strong> <%= order.payment.payment_gateway.toUpperCase() %>
+                                </div>
+                                <div class="text-white-50">
+                                    <strong class="text-white">Paid At:</strong> <%= new Date(order.payment.paid_at || order.payment.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) %>
+                                </div>
+                            </div>
+                        <% } %>
+
+                        <% if (order.order_note) { %>
+                            <div>
+                                <span class="ot-field-label">Order Note</span>
+                                <p class="mt-1 mb-0 text-white-50 fst-italic"><%= order.order_note %></p>
+                            </div>
+                        <% } %>
+
+                        <div class="ot-totals-box">
+                            <div class="d-flex justify-content-between mb-1 text-white-50">
+                                <span>Subtotal</span>
+                                <span>৳<%= order.subtotal.toFixed(2) %></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1 text-white-50">
+                                <span>Delivery Fee</span>
+                                <span><%= order.delivery_charge === 0 ? 'FREE' : '৳' + order.delivery_charge.toFixed(2) %></span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2 fs-6 font-weight-800 text-white">
+                                <span>Total Amount</span>
+                                <span class="text-primary-custom">৳<%= order.total_amount.toFixed(2) %></span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+</div>
+
+<script src="/js/order-tracking.js" defer></script>
+<%- include('../partials/footer') %>

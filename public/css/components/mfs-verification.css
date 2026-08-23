@@ -1,0 +1,70 @@
+/* ==========================================================================
+   MFS Verification & Payment Components
+   ========================================================================== */
+
+.mfs-panel {
+    max-width: 650px;
+    margin: 1.5rem auto;
+    padding: 2.5rem 2rem;
+    border-radius: 20px;
+}
+
+.mfs-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.mfs-logo-badge {
+    display: inline-block;
+    padding: 0.4rem 1.25rem;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #fff;
+    margin-bottom: 0.75rem;
+}
+
+.mfs-logo-bkash {
+    background: #e2136e;
+    box-shadow: 0 4px 15px rgba(226, 19, 110, 0.35);
+}
+
+.mfs-logo-nagad {
+    background: #f7921e;
+    box-shadow: 0 4px 15px rgba(247, 146, 30, 0.35);
+}
+
+.mfs-steps-list {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.75rem;
+}
+
+.mfs-step-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.mfs-step-item:last-child {
+    margin-bottom: 0;
+}
+
+.mfs-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.25);
+    color: #c4b5fd;
+    font-weight: 700;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}

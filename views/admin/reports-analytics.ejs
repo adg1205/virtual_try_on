@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout d-grid">
+    <%- include('../partials/admin-sidebar') %>
+    <section class="dashboard-content w-100">
+        <div class="dashboard-header d-flex align-items-center justify-content-between gap-3">
+            <h2 class="mb-0">Reports & Analytics</h2>
+        </div>
+        <div class="dashboard-body container-fluid px-0">
+            
+            <div class="stats-grid d-grid gap-3">
+                <div class="stat-card glass-panel card h-100 text-light border-0 shadow-sm">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-info"><h3>Total Revenue</h3><p class="stat-number">$0.00</p></div>
+                </div>
+                <div class="stat-card glass-panel card h-100 text-light border-0 shadow-sm">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-info"><h3>Total Orders</h3><p class="stat-number">0</p></div>
+                </div>
+                <div class="stat-card glass-panel card h-100 text-light border-0 shadow-sm">
+                    <div class="stat-icon">📸</div>
+                    <div class="stat-info"><h3>Total Try-Ons</h3><p class="stat-number">0</p></div>
+                </div>
+                <div class="stat-card glass-panel card h-100 text-light border-0 shadow-sm">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-info"><h3>Top Frame</h3><p class="stat-number">N/A</p></div>
+                </div>
+            </div>
+            <div class="chart-placeholder glass-panel card text-light border-0 shadow-sm mt-4 d-flex align-items-center justify-content-center p-4" style="min-height: 300px;">
+                <p class="text-muted">Sales chart will be rendered here.</p>
+            </div>
+        </div>
+    </section>
+</div>
+<%- include('../partials/footer') %>

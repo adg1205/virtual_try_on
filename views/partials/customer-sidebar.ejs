@@ -1,0 +1,58 @@
+<aside class="sidebar">
+    <div class="sidebar-header d-flex align-items-center justify-content-between gap-2">
+        <h3>My Account</h3>
+        <button class="btn btn-sm btn-secondary sidebar-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#customerSidebarMenu" aria-controls="customerSidebarMenu" aria-expanded="false" aria-label="Toggle account navigation">
+            <span aria-hidden="true">&#9776;</span>
+        </button>
+    </div>
+    <div class="collapse d-lg-block sidebar-menu" id="customerSidebarMenu">
+    <nav class="sidebar-nav nav flex-column">
+        <a href="/customer/dashboard" class="sidebar-link<%= currentPage === 'dashboard' ? ' active' : '' %>">
+            <span class="sidebar-icon">🏠</span> Dashboard
+        </a>
+        <div class="sidebar-section-title">Try-On</div>
+        <a href="/customer/virtual-try-on" class="sidebar-link<%= currentPage === 'virtual-try-on' ? ' active' : '' %>">
+            <span class="sidebar-icon">📸</span> Virtual Try-On
+        </a>
+        <a href="/customer/frame-catalog" class="sidebar-link<%= currentPage === 'frame-catalog' ? ' active' : '' %>">
+            <span class="sidebar-icon">👓</span> Frame Catalog
+        </a>
+        <a href="/customer/ai-recommendations" class="sidebar-link<%= currentPage === 'ai-recommendations' ? ' active' : '' %>">
+            <span class="sidebar-icon">🤖</span> AI Recommendations
+        </a>
+        <a href="/customer/for-you" class="sidebar-link<%= currentPage === 'for-you' ? ' active' : '' %>">
+            <span class="sidebar-icon">✨</span> For You
+        </a>
+        <a href="/customer/compare-frames" class="sidebar-link<%= currentPage === 'compare-frames' ? ' active' : '' %>">
+            <span class="sidebar-icon">⚖️</span> Compare Frames
+        </a>
+        <a href="/customer/try-on-history" class="sidebar-link<%= currentPage === 'try-on-history' ? ' active' : '' %>">
+            <span class="sidebar-icon">🕘</span> Try-On History
+        </a>
+        <div class="sidebar-section-title">Shopping</div>
+        <a href="/customer/wishlist" class="sidebar-link<%= currentPage === 'wishlist' ? ' active' : '' %>">
+            <span class="sidebar-icon">❤️</span> Wishlist
+        </a>
+        <a href="/customer/cart" class="sidebar-link<%= currentPage === 'cart' ? ' active' : '' %>">
+            <span class="sidebar-icon">🛒</span> Cart
+        </a>
+        <a href="/customer/my-orders" class="sidebar-link<%= currentPage === 'my-orders' ? ' active' : '' %>">
+            <span class="sidebar-icon">📦</span> My Orders
+        </a>
+        <div class="sidebar-section-title">Explore</div>
+        <a href="/customer/trending" class="sidebar-link<%= currentPage === 'trending' ? ' active' : '' %>">
+            <span class="sidebar-icon">🔥</span> Trending & Popular
+        </a>
+        <a href="/customer/nearby-stores" class="sidebar-link<%= currentPage === 'nearby-stores' ? ' active' : '' %>">
+            <span class="sidebar-icon">📍</span> Nearby Stores
+        </a>
+        <div class="sidebar-section-title">Account</div>
+        <a href="/customer/profile" class="sidebar-link<%= currentPage === 'profile' ? ' active' : '' %>">
+            <span class="sidebar-icon">👤</span> My Profile
+        </a>
+        <a href="/logout" class="sidebar-link sidebar-logout">
+            <span class="sidebar-icon">🚪</span> Logout
+        </a>
+    </nav>
+    </div>
+</aside>

@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+
+<section class="page-content container-xl mx-auto px-3 px-md-4 py-5">
+    <h2 class="mb-0">Frame Catalog Preview</h2>
+    <div class="catalog-grid d-grid mt-4">
+        <% if (frames && frames.length > 0) { %>
+            <% frames.forEach(function(frame) { %>
+                <div class="frame-card glass-panel card h-100 text-light">
+                    <div class="frame-image-placeholder card-img-top">
+                        <span class="icon">👓</span>
+                    </div>
+                    <div class="frame-details card-body d-flex flex-column p-0">
+                        <h3 class="card-title"><%= frame.name %></h3>
+                        <p class="brand"><%= frame.brand %></p>
+                        <p class="price">$<%= frame.price.toFixed(2) %></p>
+                        <button type="button" class="btn btn-primary btn-full w-100 mt-auto">Try On</button>
+                    </div>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <div class="alert alert-secondary text-center mb-0" role="status">No frames found in the catalog.</div>
+        <% } %>
+    </div>
+</section>
+
+<%- include('partials/footer') %>

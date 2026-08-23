@@ -1,0 +1,128 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center flex-wrap gap-3">
+            <div>
+                <h2>My Orders</h2>
+                <p class="text-muted-custom mt-1">
+                    Track past and ongoing eyewear purchases and check order updates.
+                </p>
+            </div>
+            <a href="/customer/frame-catalog" class="btn btn-secondary btn-sm rounded-pill px-3 py-2 small">
+                👓 Shop More Frames
+            </a>
+        </div>
+
+        <div class="dashboard-body mt-4">
+            
+            <% if (!orders || orders.length === 0) { %>
+                <!-- EMPTY ORDERS STATE -->
+                <div class="glass-panel text-center mx-auto my-4 rounded-4 p-5" style="max-width: 600px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);">
+                    <div class="fs-1 mb-3">📦</div>
+                    <h3 class="font-weight-700 text-white mb-2 fs-4">No Orders Placed Yet</h3>
+                    <p class="text-muted-custom small mx-auto mb-4" style="max-width: 450px; line-height: 1.6;">
+                        You haven't placed any orders yet. Discover our premium frame collections and place your first order today!
+                    </p>
+                    <a href="/customer/frame-catalog" class="btn btn-primary rounded-pill px-4 py-2 font-weight-700 d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                        <span>👓</span> Explore Catalog
+                    </a>
+                </div>
+            <% } else { %>
+
+                <!-- ORDERS TABLE CONTAINER -->
+                <div class="glass-panel p-2 rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                    <table class="data-table align-middle w-100">
+                        <thead>
+                            <tr class="border-bottom border-secondary border-opacity-25" style="background: rgba(255,255,255,0.02);">
+                                <th class="p-3 text-start">Order ID</th>
+                                <th class="p-3 text-center">Date</th>
+                                <th class="p-3 text-center">Items</th>
+                                <th class="p-3 text-center">Payment</th>
+                                <th class="p-3 text-center">Total</th>
+                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% orders.forEach(order => { %>
+                                <tr id="order-row-<%= order.id %>" class="order-table-row">
+                                    
+                                    <!-- ORDER NUMBER -->
+                                    <td class="p-3 text-start">
+                                        <div class="font-weight-700 text-white"><%= order.order_number %></div>
+                                        <div class="small text-muted-custom mt-1">Ref #<%= order.id %></div>
+                                    </td>
+
+                                    <!-- DATE -->
+                                    <td class="p-3 text-center text-white-50 small">
+                                        <%= new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+                                    </td>
+
+                                    <!-- ITEMS COUNT -->
+                                    <td class="p-3 text-center font-weight-600 text-white small">
+                                        <%= order.total_items %> Item<%= order.total_items > 1 ? 's' : '' %>
+                                    </td>
+
+                                    <!-- PAYMENT METHOD -->
+                                    <td class="p-3 text-center text-uppercase small font-weight-700 text-info">
+                                        <%= order.payment_method %>
+                                        <div class="mo-payment-status mt-1 <%= order.payment_status === 'paid' ? 'text-success' : 'text-warning' %>">
+                                            <%= order.payment_status === 'paid' ? 'PAID' : 'UNPAID' %>
+                                        </div>
+                                    </td>
+
+                                    <!-- TOTAL -->
+                                    <td class="p-3 text-center font-weight-800 text-secondary-custom fs-6">
+                                        ৳<%= order.total_amount.toFixed(2) %>
+                                    </td>
+
+                                    <!-- STATUS BADGE -->
+                                    <td class="p-3 text-center">
+                                        <% 
+                                            let badgeClass = 'mo-status-placed';
+                                            if (order.status === 'Processing') {
+                                                badgeClass = 'mo-status-processing';
+                                            } else if (order.status === 'Shipped') {
+                                                badgeClass = 'mo-status-shipped';
+                                            } else if (order.status === 'Delivered') {
+                                                badgeClass = 'mo-status-delivered';
+                                            } else if (order.status === 'Cancelled') {
+                                                badgeClass = 'mo-status-cancelled';
+                                            }
+                                        %>
+                                        <span id="order-status-badge-<%= order.id %>" class="mo-status-badge <%= badgeClass %>">
+                                            <%= order.status %>
+                                        </span>
+                                    </td>
+
+                                    <!-- ACTIONS -->
+                                    <td class="p-3 text-end">
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <a href="/customer/order-tracking/<%= order.id %>" class="btn btn-secondary btn-sm rounded-pill px-3 py-1 small">
+                                                📍 Track
+                                            </a>
+                                            <% if (order.status === 'Placed') { %>
+                                                <button type="button" class="btn btn-sm btn-cancel-order rounded-pill px-3 py-1 small" data-order-id="<%= order.id %>">
+                                                    ✖ Cancel
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </td>
+
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+
+            <% } %>
+
+        </div>
+    </section>
+</div>
+
+<script src="/js/my-orders.js" defer></script>
+<%- include('../partials/footer') %>

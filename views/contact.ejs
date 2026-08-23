@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+
+<section class="auth-section container-sm px-3 py-5">
+    <div class="auth-box glass-panel card text-light border-0 shadow-lg p-4 p-md-5">
+        <h2 class="card-title text-center">Contact Us</h2>
+        <form action="/contact" method="POST">
+            <div class="form-group mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" id="name" name="name" class="form-control" autocomplete="name" required>
+            </div>
+            <div class="form-group mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" class="form-control" autocomplete="email" required>
+            </div>
+            <div class="form-group mb-4">
+                <label for="message" class="form-label">Message</label>
+                <textarea id="message" name="message" rows="4" class="form-control" required></textarea>
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-full w-100">Send Message</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<%- include('partials/footer') %>

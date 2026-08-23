@@ -1,0 +1,38 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-center flex-wrap gap-3">
+            <div>
+                <h2>Checkout</h2>
+                <p class="text-muted-custom mt-1">
+                    Provide your delivery details and choose a payment method to complete your order.
+                </p>
+            </div>
+            <a href="/customer/cart" class="btn btn-secondary btn-sm cart-continue-btn">
+                🛒 Back to Cart
+            </a>
+        </div>
+
+        <div class="dashboard-body mt-4">
+            <!-- Vue Island: CheckoutForm -->
+            <div
+                id="vue-checkout"
+                data-vue-component="CheckoutForm"
+                data-vue-props='<%- JSON.stringify({ user: user || {}, cartItems: cartItems || [], deliveryCharge: typeof deliveryCharge !== "undefined" ? deliveryCharge : 0 }) %>'
+            >
+                <!-- SSR Fallback -->
+                <div class="checkout-layout-grid">
+                    <div class="checkout-left-col">
+                        <div class="glass-panel checkout-panel mb-4">
+                            <h3 class="panel-section-title"><span>📍 Delivery Details</span></h3>
+                            <p class="text-white small"><%= user && user.address ? user.address : 'Enter your address' %></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('../partials/footer') %>

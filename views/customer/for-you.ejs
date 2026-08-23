@@ -1,0 +1,137 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header d-flex flex-column flex-sm-row justify-content-between align-items-sm-start flex-wrap gap-3">
+            <div>
+                <h2>✨ Curated For You</h2>
+                <p class="text-muted-custom mt-1">
+                    Personalized frame picks calculated from your try-ons, wishlist, cart, and optical preferences.
+                </p>
+            </div>
+            <a href="/customer/ai-recommendations" class="btn btn-secondary d-flex align-items-center gap-2 small">
+                <span>🤖</span> Try Facial Analysis
+            </a>
+        </div>
+
+        <div class="dashboard-body d-flex flex-column gap-4">
+
+            <% if (recentActivity && recentActivity.length > 0) { %>
+                <!-- Recently Interacted Carousel Section -->
+                <div class="glass-panel p-4 rounded-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <h3 class="fs-5 m-0 d-flex align-items-center gap-2">
+                            <span>🕘</span> Recently Interacted Frames
+                        </h3>
+                        <span class="small text-muted"><%= recentActivity.length %> recent items</span>
+                    </div>
+
+                    <div class="recent-activity-slider">
+                        <% recentActivity.forEach(act => { %>
+                            <div class="recent-act-card">
+                                <span class="act-type-badge act-type-<%= act.activity_type.toLowerCase().replace(' ', '-') %>">
+                                    <%= act.activity_type === 'Try-On' ? '📸 Try-On' : (act.activity_type === 'Wishlist' ? '❤️ Wishlisted' : '🛒 Carted') %>
+                                </span>
+                                <div class="recent-act-thumb">
+                                    <img src="<%= act.image_url %>" alt="<%= act.frame_name %>" class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                                <h4 class="recent-act-name">
+                                    <%= act.frame_name %>
+                                </h4>
+                                <p class="recent-act-brand"><%= act.brand %></p>
+                                <a href="/customer/frame-details/<%= act.frame_id %>" class="btn btn-secondary btn-full py-1 rounded-2 small">View</a>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Main Recommendation Cards (Top 4 Picks) -->
+            <div>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <h3 class="fs-4 m-0 d-flex align-items-center gap-2">
+                        <span>🎯</span> Top <%= recommendations.length %> Recommended Matches
+                    </h3>
+                    <span class="recommendation-badge-activity">
+                        Activity Score Matched
+                    </span>
+                </div>
+
+                <div class="frame-catalog-grid gap-4">
+                    <% recommendations.forEach(frame => { %>
+                        <% const isWishlisted = wishlistIds.includes(frame.id); %>
+                        <div class="frame-card glass-panel <%= !frame.availability ? 'border-danger opacity-90' : '' %>">
+                            
+                            <!-- Image Wrap -->
+                            <div class="frame-card-image-wrap <%= !frame.availability ? 'filter-grayscale' : '' %>">
+                                <img src="<%= frame.image_url %>" alt="<%= frame.name %>" class="frame-card-img" onerror="this.src='https://placehold.co/320x200/1a1a2e/a78bfa?text=🕶️+No+Image'">
+                                
+                                <!-- Floating Wishlist Heart Button -->
+                                <button class="catalog-wishlist-btn <%= isWishlisted ? 'text-danger' : 'text-white-50' %>" data-frame-id="<%= frame.id %>" data-wishlisted="<%= isWishlisted %>">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="<%= isWishlisted ? 'currentColor' : 'none' %>" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                                </button>
+
+                                <!-- Availability Badge -->
+                                <span class="availability-badge <%= frame.availability ? 'badge-in-stock' : 'badge-out-of-stock' %>">
+                                    ● <%= frame.availability ? 'In Stock' : 'Out of Stock' %>
+                                </span>
+                            </div>
+
+                            <!-- Card Body -->
+                            <div class="p-3 d-flex flex-column flex-grow-1 gap-2">
+                                
+                                <!-- Visible Reason Tag -->
+                                <div class="recommendation-reason-tag">
+                                    <%= frame.recommendationReason %>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <h4 class="mb-0 fs-6 font-weight-700 text-white"><%= frame.name %></h4>
+                                        <span class="small text-muted-custom"><%= frame.brand %></span>
+                                    </div>
+                                    <span class="fs-6 font-weight-800 text-secondary-custom">৳<%= Number(frame.price).toFixed(2) %></span>
+                                </div>
+
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <span class="frame-tag tag-shape">🔷 <%= frame.shape %></span>
+                                    <span class="frame-tag tag-material">💎 <%= frame.material %></span>
+                                    <span class="frame-tag tag-color">🎨 <%= frame.color %></span>
+                                </div>
+
+                                <!-- Out of Stock Alternative Suggestion Row -->
+                                <% if (!frame.availability && frame.alternative) { %>
+                                    <div class="oos-alternative-box">
+                                        <div class="oos-alternative-title">
+                                            <span>💡</span> In-Stock Alternative:
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                            <div class="d-flex align-items-center gap-2 text-truncate">
+                                                <div class="oos-thumb">
+                                                    <img src="<%= frame.alternative.image_url %>" alt="<%= frame.alternative.name %>" class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                                </div>
+                                                <div class="text-truncate">
+                                                    <p class="oos-alt-name"><%= frame.alternative.name %></p>
+                                                    <span class="oos-alt-price">৳<%= Number(frame.alternative.price).toFixed(2) %></span>
+                                                </div>
+                                            </div>
+                                            <a href="/customer/frame-details/<%= frame.alternative.id %>" class="btn btn-secondary btn-sm oos-view-btn">View →</a>
+                                        </div>
+                                    </div>
+                                <% } %>
+
+                                <div class="mt-auto d-flex gap-2 pt-2">
+                                    <a href="/customer/frame-details/<%= frame.id %>" class="btn btn-primary btn-full py-2 small">Details</a>
+                                    <a href="/customer/ai-recommendations" class="btn btn-secondary py-2 px-3 d-flex align-items-center justify-content-center" title="AI Facial Structure Analysis">📸</a>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+
+        </div>
+
+<script src="/js/for-you.js" defer></script>
+
+<%- include('../partials/footer') %>

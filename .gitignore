@@ -1,0 +1,26 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!env.example
+
+# Dependencies and build output
+node_modules/
+client/node_modules/
+public/dist/
+client/dist/
+coverage/
+
+# Runtime data and user uploads
+database.sqlite
+database.sqlite-*
+public/uploads/
+scratch/
+
+# Logs and local editor files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

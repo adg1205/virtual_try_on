@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout d-grid">
+    <%- include('../partials/admin-sidebar') %>
+    <section class="dashboard-content w-100">
+        <div class="dashboard-header d-flex align-items-center justify-content-between gap-3">
+            <h2 class="mb-0">Edit Frame</h2>
+        </div>
+        <div class="dashboard-body container-fluid px-0">
+            
+            <div class="form-card glass-panel card text-light border-0 shadow-sm p-3 p-md-4">
+                <p class="text-muted">Editing frame ID: <%= frameId %></p>
+                <form action="/admin/edit-frame/<%= frameId %>" method="POST" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <div class="form-group col-md-6 mb-0">
+                            <label for="name" class="form-label">Frame Name</label>
+                            <input type="text" id="name" name="name" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-6 mb-0">
+                            <label for="brand" class="form-label">Brand</label>
+                            <input type="text" id="brand" name="brand" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-0">
+                        <div class="form-group col-md-6 mb-0">
+                            <label for="price" class="form-label">Price ($)</label>
+                            <input type="number" id="price" name="price" class="form-control" step="0.01" required>
+                        </div>
+                        <div class="form-group col-md-6 mb-0">
+                            <label for="category" class="form-label">Category</label>
+                            <select id="category" name="category" class="form-select w-100"><option>Select Category</option></select>
+                        </div>
+                    </div>
+                    <div class="form-group mt-3 mb-3">
+                        <label for="image" class="form-label">Update Image</label>
+                        <input type="file" id="image" name="image" class="form-control" accept="image/*">
+                    </div>
+                    <div class="form-group mb-4">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea id="description" name="description" rows="4" class="form-control"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+<%- include('../partials/footer') %>

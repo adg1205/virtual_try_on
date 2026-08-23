@@ -1,0 +1,142 @@
+<%- include('../partials/header') %>
+<div class="dashboard-layout">
+    <%- include('../partials/customer-sidebar') %>
+    <section class="dashboard-content container-fluid">
+        <div class="dashboard-header">
+            <div>
+                <h2>Nearby Optical Stores</h2>
+                <p class="text-muted">Find our nearest branch, view opening hours & contact details, or get turn-by-turn directions.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-body">
+            <!-- Controls Bar -->
+            <div class="glass-panel store-controls-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="control-group">
+                    <button id="btn-use-location" class="btn btn-primary btn-location">
+                        <span class="icon">📍</span> Use My Location
+                    </button>
+                    <div class="select-wrapper">
+                        <label for="area-select" class="sr-only visually-hidden">Select Area in Dhaka</label>
+                        <select id="area-select" class="form-select">
+                            <option value="">-- Select Area in Dhaka --</option>
+                            <% dhakaAreas.forEach(area => { %>
+                                <option value="<%= area.name %>" data-lat="<%= area.lat %>" data-lng="<%= area.lng %>">
+                                    📍 <%= area.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    </div>
+                </div>
+                <div class="control-group search-group">
+                    <input type="text" id="store-search" class="form-input form-control" placeholder="Search branch name or address..." />
+                </div>
+            </div>
+
+            <!-- Active Location Status Banner -->
+            <div id="location-status-bar" class="location-status-bar glass-panel" style="display: none;">
+                <span id="location-status-icon">📍</span>
+                <span id="location-status-text">Showing branches near selected location</span>
+                <button id="btn-clear-location" class="btn-text" title="Reset filter">&times; Reset</button>
+            </div>
+
+            <!-- Main Grid: Map (Left) + Store List (Right) -->
+            <div class="store-locator-grid">
+                <!-- Map Container -->
+                <div class="map-column">
+                    <div class="glass-panel map-card-container">
+                        <div id="store-map" class="store-map"></div>
+                        <!-- Floating Map Controls / Legend -->
+                        <div class="map-legend">
+                            <div class="legend-item"><span class="legend-dot user-dot"></span> Your Location</div>
+                            <div class="legend-item"><span class="legend-dot store-dot"></span> Optical Branch</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Store Cards Sidebar -->
+                <div class="store-list-column">
+                    <div class="list-header">
+                        <h3>Branches (<span id="branch-count"><%= stores.length %></span>)</h3>
+                        <span class="sort-badge" id="sort-badge">Default order</span>
+                    </div>
+
+                    <div id="stores-container" class="stores-container">
+                        <% stores.forEach(store => { %>
+                            <div class="store-card glass-panel" data-id="<%= store.id %>" data-lat="<%= store.lat %>" data-lng="<%= store.lng %>" data-name="<%= store.name %>" data-area="<%= store.area %>">
+                                <div class="store-card-header">
+                                    <h4 class="store-name"><%= store.name %></h4>
+                                    <span class="distance-badge" id="distance-badge-<%= store.id %>" style="display: none;">-- km</span>
+                                </div>
+                                <p class="store-address">📍 <%= store.address %></p>
+                                <div class="store-meta">
+                                    <span class="meta-item">🕒 <%= store.hours %> (<%= store.openDays %>)</span>
+                                    <span class="meta-item">📞 <a href="tel:<%= store.phone %>"><%= store.phone %></a></span>
+                                </div>
+                                <div class="store-card-actions">
+                                    <button class="btn btn-secondary btn-sm btn-focus-store" onclick="focusStoreOnMap(<%= store.id %>)">
+                                        🔍 View on Map
+                                    </button>
+                                    <button class="btn btn-primary btn-sm btn-get-directions" onclick="getDirectionsToStore(<%= store.id %>)">
+                                        🗺️ Get Directions
+                                    </button>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Directions Panel (Initially Hidden) -->
+            <div id="directions-panel" class="glass-panel directions-panel" style="display: none;">
+                <div class="directions-header">
+                    <div>
+                        <span class="badge-tag">Navigation</span>
+                        <h3 id="dir-destination-name">Directions to Store</h3>
+                        <p id="dir-destination-address" class="text-muted"></p>
+                    </div>
+                    <button class="btn-close-directions" onclick="closeDirections()">&times;</button>
+                </div>
+                
+                <div class="directions-summary">
+                    <div class="summary-metric">
+                        <span class="metric-icon">🛣️</span>
+                        <div>
+                            <div class="metric-label">Total Distance</div>
+                            <div class="metric-value" id="dir-total-distance">-- km</div>
+                        </div>
+                    </div>
+                    <div class="summary-metric">
+                        <span class="metric-icon">⏱️</span>
+                        <div>
+                            <div class="metric-label">Est. Travel Time</div>
+                            <div class="metric-value" id="dir-total-time">-- min</div>
+                        </div>
+                    </div>
+                    <div class="summary-actions">
+                        <a id="dir-gmaps-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+                            🌐 Open in Google Maps
+                        </a>
+                    </div>
+                </div>
+
+                <div class="directions-steps-container">
+                    <h4>Turn-by-Turn Guidance</h4>
+                    <ul id="directions-steps-list" class="directions-steps-list">
+                        <!-- Step items inserted dynamically -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Embedded Stores Data for JS -->
+<script>
+    window.STORE_DATA = <%- JSON.stringify(stores) %>;
+    window.DHAKA_AREAS = <%- JSON.stringify(dhakaAreas) %>;
+    window.MAPTILER_KEY = "<%= mapTilerKey %>";
+</script>
+<script src="/js/nearby-stores.js" defer></script>
+
+<%- include('../partials/footer') %>
