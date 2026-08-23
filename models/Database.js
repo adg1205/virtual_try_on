@@ -2,8 +2,19 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const dbPath = path.join(__dirname, '..', 'database.sqlite');
+const configuredDbPath = process.env.DB_PATH?.trim();
+const dbPath = configuredDbPath
+    ? (path.isAbsolute(configuredDbPath)
+        ? configuredDbPath
+        : path.resolve(__dirname, '..', configuredDbPath))
+    : path.join(__dirname, '..', 'database.sqlite');
 const db = new sqlite3.Database(dbPath);
+
+function closeDatabase() {
+    return new Promise((resolve, reject) => {
+        db.close((error) => error ? reject(error) : resolve());
+    });
+}
 
 function initializeDatabase() {
     return new Promise((resolve, reject) => {
@@ -802,6 +813,108 @@ function createOrderItems(orderId, items) {
     });
 }
 
+/**
+ * Creates a COD order, snapshots every cart line, and clears the customer's
+ * cart as one SQLite transaction. A failure at any point rolls back all three
+ * operations so customers never receive a partial order.
+ */
+function createOrderFromCart(orderData, items) {
+    return new Promise((resolve, reject) => {
+        if (!Array.isArray(items) || items.length === 0) {
+            return reject(new Error('Cannot create an order from an empty cart'));
+        }
+
+        const transactionDb = new sqlite3.Database(dbPath);
+        let settled = false;
+        const rollback = (error) => {
+            if (settled) return;
+            settled = true;
+            transactionDb.run('ROLLBACK', () => {
+                transactionDb.close(() => reject(error));
+            });
+        };
+
+        transactionDb.serialize(() => {
+            transactionDb.run('BEGIN IMMEDIATE TRANSACTION', (beginError) => {
+                if (beginError) {
+                    settled = true;
+                    return transactionDb.close(() => reject(beginError));
+                }
+
+                const orderSql = `
+                    INSERT INTO orders (
+                        user_id, order_number, delivery_address, contact_number,
+                        order_note, payment_method, subtotal, delivery_charge,
+                        total_amount, status, payment_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+                const orderParams = [
+                    orderData.userId,
+                    orderData.orderNumber,
+                    orderData.deliveryAddress,
+                    orderData.contactNumber,
+                    orderData.orderNote || null,
+                    orderData.paymentMethod,
+                    orderData.subtotal,
+                    orderData.deliveryCharge,
+                    orderData.totalAmount,
+                    orderData.status || 'Placed',
+                    orderData.paymentStatus || 'unpaid'
+                ];
+
+                transactionDb.run(orderSql, orderParams, function(orderError) {
+                    if (orderError) return rollback(orderError);
+                    const orderId = this.lastID;
+                    let itemError = null;
+                    const itemStatement = transactionDb.prepare(`
+                        INSERT INTO order_items (
+                            order_id, frame_id, frame_name, brand, image_url,
+                            lens_option, selected_variant, quantity, unit_price, line_total
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+
+                    items.forEach(item => {
+                        const lineTotal = Number(item.price) * Number(item.quantity);
+                        itemStatement.run([
+                            orderId,
+                            item.frame_id,
+                            item.frame_name,
+                            item.brand,
+                            item.frame_catalog_image || item.image_url,
+                            item.lens_option,
+                            item.selected_variant,
+                            item.quantity,
+                            item.price,
+                            lineTotal
+                        ], (error) => {
+                            if (error && !itemError) itemError = error;
+                        });
+                    });
+
+                    itemStatement.finalize((finalizeError) => {
+                        if (itemError || finalizeError) {
+                            return rollback(itemError || finalizeError);
+                        }
+
+                        transactionDb.run('DELETE FROM cart WHERE user_id = ?', [orderData.userId], (clearError) => {
+                            if (clearError) return rollback(clearError);
+
+                            transactionDb.run('COMMIT', (commitError) => {
+                                if (commitError) return rollback(commitError);
+                                settled = true;
+                                transactionDb.close((closeError) => {
+                                    if (closeError) return reject(closeError);
+                                    resolve(orderId);
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+}
+
 function getUserOrders(userId) {
     return new Promise((resolve, reject) => {
         const sql = `
@@ -1251,8 +1364,17 @@ function logFrameComparison(userId, frameId1, frameId2) {
     });
 }
 
+function normalizeAnalyticsRange(value, fallback, minimum, maximum) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= minimum && parsed <= maximum
+        ? parsed
+        : fallback;
+}
+
 function getMostTriedFrames(days = 30, limit = 5) {
     return new Promise((resolve, reject) => {
+        days = normalizeAnalyticsRange(days, 30, 1, 365);
+        limit = normalizeAnalyticsRange(limit, 5, 1, 20);
         const sql = `
             SELECT f.*, COUNT(t.id) AS tryon_count
             FROM frames f
@@ -1271,6 +1393,8 @@ function getMostTriedFrames(days = 30, limit = 5) {
 
 function getMostWishlistedFrames(days = 30, limit = 5) {
     return new Promise((resolve, reject) => {
+        days = normalizeAnalyticsRange(days, 30, 1, 365);
+        limit = normalizeAnalyticsRange(limit, 5, 1, 20);
         const sql = `
             SELECT f.*, COUNT(w.id) AS wishlist_count
             FROM frames f
@@ -1289,6 +1413,8 @@ function getMostWishlistedFrames(days = 30, limit = 5) {
 
 function getTrendingShapes(days = 30, limit = 5) {
     return new Promise((resolve, reject) => {
+        days = normalizeAnalyticsRange(days, 30, 1, 365);
+        limit = normalizeAnalyticsRange(limit, 5, 1, 20);
         const sql = `
             SELECT shape, SUM(activity_count) AS total_activity FROM (
                 SELECT f.shape AS shape, COUNT(t.id) AS activity_count
@@ -1307,17 +1433,43 @@ function getTrendingShapes(days = 30, limit = 5) {
 
                 UNION ALL
 
-                SELECT f.shape AS shape, COUNT(c.id) AS activity_count
+                SELECT f.shape AS shape, SUM(c.quantity) AS activity_count
                 FROM cart c
                 INNER JOIN frames f ON c.frame_id = f.id
                 WHERE c.created_at >= DATETIME('now', '-' || ? || ' days')
+                GROUP BY f.shape
+
+                UNION ALL
+
+                SELECT f.shape AS shape, SUM(oi.quantity) AS activity_count
+                FROM orders o
+                INNER JOIN order_items oi ON oi.order_id = o.id
+                INNER JOIN frames f ON oi.frame_id = f.id
+                WHERE o.created_at >= DATETIME('now', '-' || ? || ' days')
+                  AND o.status != 'Cancelled'
+                GROUP BY f.shape
+
+                UNION ALL
+
+                SELECT f.shape AS shape, COUNT(fc.id) AS activity_count
+                FROM frame_comparisons fc
+                INNER JOIN frames f ON fc.frame_id_1 = f.id
+                WHERE fc.created_at >= DATETIME('now', '-' || ? || ' days')
+                GROUP BY f.shape
+
+                UNION ALL
+
+                SELECT f.shape AS shape, COUNT(fc.id) AS activity_count
+                FROM frame_comparisons fc
+                INNER JOIN frames f ON fc.frame_id_2 = f.id
+                WHERE fc.created_at >= DATETIME('now', '-' || ? || ' days')
                 GROUP BY f.shape
             )
             GROUP BY shape
             ORDER BY total_activity DESC
             LIMIT ?
         `;
-        db.all(sql, [days, days, days, limit], (err, rows) => {
+        db.all(sql, [days, days, days, days, days, days, limit], (err, rows) => {
             if (err) reject(err);
             else resolve(rows || []);
         });
@@ -1326,6 +1478,8 @@ function getTrendingShapes(days = 30, limit = 5) {
 
 function getFrequentlyComparedPairs(days = 30, limit = 5) {
     return new Promise((resolve, reject) => {
+        days = normalizeAnalyticsRange(days, 30, 1, 365);
+        limit = normalizeAnalyticsRange(limit, 5, 1, 20);
         const sql = `
             SELECT 
                 fc.frame_id_1, fc.frame_id_2, COUNT(fc.id) AS compare_count,
@@ -1346,8 +1500,29 @@ function getFrequentlyComparedPairs(days = 30, limit = 5) {
     });
 }
 
+async function getPopularityIndicators(days = 30, limit = 5) {
+    const normalizedDays = normalizeAnalyticsRange(days, 30, 1, 365);
+    const normalizedLimit = normalizeAnalyticsRange(limit, 5, 1, 20);
+    const [mostTried, mostWishlisted, trendingShapes, comparedPairs] = await Promise.all([
+        getMostTriedFrames(normalizedDays, normalizedLimit),
+        getMostWishlistedFrames(normalizedDays, normalizedLimit),
+        getTrendingShapes(normalizedDays, normalizedLimit),
+        getFrequentlyComparedPairs(normalizedDays, normalizedLimit)
+    ]);
+
+    return {
+        windowDays: normalizedDays,
+        limit: normalizedLimit,
+        mostTried,
+        mostWishlisted,
+        trendingShapes,
+        comparedPairs
+    };
+}
+
 module.exports = {
     initializeDatabase,
+    closeDatabase,
     getAllFrames,
     getAllFramesSorted,
     getFrameById,
@@ -1379,6 +1554,7 @@ module.exports = {
     clearCart,
     createOrder,
     createOrderItems,
+    createOrderFromCart,
     getUserOrders,
     getUserOrderCount,
     getOrderById,
@@ -1401,7 +1577,6 @@ module.exports = {
     getMostTriedFrames,
     getMostWishlistedFrames,
     getTrendingShapes,
-    getFrequentlyComparedPairs
+    getFrequentlyComparedPairs,
+    getPopularityIndicators
 };
-
-

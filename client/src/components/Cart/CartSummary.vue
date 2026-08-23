@@ -21,9 +21,9 @@
 
       <!-- Free Delivery Progress / Notice -->
       <div v-if="deliveryCharge > 0 && subtotal > 0" class="delivery-notice-box mb-3 p-2 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 small text-white-50">
-        <span>🚚 Add <strong>৳{{ (200 - subtotal).toFixed(2) }}</strong> more to get <strong>FREE Delivery</strong>!</span>
+        <span>🚚 Add <strong>৳{{ (deliveryThreshold - subtotal).toFixed(2) }}</strong> more to get <strong>FREE Delivery</strong>!</span>
       </div>
-      <div v-else-if="subtotal >= 200" class="delivery-notice-box mb-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 small text-success font-weight-600">
+      <div v-else-if="subtotal >= deliveryThreshold" class="delivery-notice-box mb-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 small text-success font-weight-600">
         <span>🎉 You unlocked <strong>FREE Delivery</strong>!</span>
       </div>
 
@@ -54,6 +54,7 @@ defineProps({
   deliveryCharge: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
   total: { type: Number, required: true },
-  totalItems: { type: Number, required: true }
+  totalItems: { type: Number, required: true },
+  deliveryThreshold: { type: Number, default: 200 }
 });
 </script>

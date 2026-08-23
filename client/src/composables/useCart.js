@@ -1,9 +1,11 @@
 import { ref, computed } from 'vue';
 
-export function useCart(initialItems = [], initialDiscount = 0) {
+export function useCart(initialItems = [], initialDiscount = 0, pricing = {}) {
   const items = ref([...initialItems]);
   const appliedDiscount = ref(Number(initialDiscount) || 0);
   const isUpdating = ref(false);
+  const deliveryThreshold = Number(pricing.deliveryThreshold) || 200;
+  const flatDeliveryFee = Number(pricing.flatDeliveryFee) || 5;
 
   const subtotal = computed(() => {
     return items.value.reduce((acc, item) => {
@@ -15,7 +17,7 @@ export function useCart(initialItems = [], initialDiscount = 0) {
 
   const deliveryCharge = computed(() => {
     if (items.value.length === 0) return 0;
-    return subtotal.value >= 200.00 ? 0 : 5.00;
+    return subtotal.value >= deliveryThreshold ? 0 : flatDeliveryFee;
   });
 
   const totalAmount = computed(() => {

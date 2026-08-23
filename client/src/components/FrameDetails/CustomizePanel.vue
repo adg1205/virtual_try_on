@@ -5,13 +5,13 @@
     </h3>
 
     <form
+      id="frame-customization-form"
       action="/customer/cart/add"
       method="POST"
       class="d-flex flex-column gap-3"
       @submit.prevent="handleAddToCart"
     >
       <input type="hidden" name="frameId" :value="frame.id" />
-      <input type="hidden" name="quantity" value="1" />
 
       <!-- Frame Color Variant -->
       <div>
@@ -37,18 +37,33 @@
           v-model="selectedLens"
           name="lens_option"
           class="form-select fd-select"
+          :disabled="isFixedSportLens"
           @change="onCustomizationChange"
         >
-          <option value="Clear Standard">Clear Standard (+৳0)</option>
-          <option value="Anti-Reflective Blue Light">Anti-Reflective Blue Light Filter (+৳500)</option>
-          <option value="Photochromic Transition">Photochromic Transition (Sun to Shade) (+৳1,200)</option>
-          <option value="Polarized Sunglasses">Polarized Sunglasses Tint (+৳800)</option>
-          <option value="High-Index Thin Lens">High-Index Ultra Thin (+৳1,500)</option>
+          <option value="Clear Lens">Clear Lens</option>
+          <option value="Blue-Light Lens">Blue-Light Lens</option>
+          <option value="Gray Tint">Gray Tint</option>
+          <option value="Brown Tint">Brown Tint</option>
+          <option value="Sunglass Tint">Sunglass Tint</option>
         </select>
+        <span v-if="isFixedSportLens" class="small text-muted-custom d-block mt-1">
+          This sport-wrap frame uses its fixed sunglass lens.
+        </span>
       </div>
 
       <!-- Lens Tint Swatches Component -->
-      <LensTintSwatches @tint-change="handleTintChange" />
+      <LensTintSwatches
+        :initialTintId="isFixedSportLens ? 'sunglass' : 'clear'"
+        :disabled="isFixedSportLens"
+        @tint-change="handleTintChange"
+      />
+
+      <div>
+        <label class="fd-spec-label mb-1 d-block">Quantity</label>
+        <select v-model.number="quantity" name="quantity" class="form-select fd-select">
+          <option v-for="value in 10" :key="value" :value="value">{{ value }}</option>
+        </select>
+      </div>
 
       <!-- AI Stylist Suggestion Box -->
       <div class="fd-ai-box">
@@ -94,23 +109,30 @@ const props = defineProps({
   frame: {
     type: Object,
     required: true
+  },
+  isFixedSportLens: {
+    type: Boolean,
+    default: false
   }
 });
 
 const emit = defineEmits(['tint-change', 'style-change']);
 
 const selectedColor = ref(props.frame.color || 'Matte Black');
-const selectedLens = ref('Clear Standard');
+const selectedLens = ref(props.isFixedSportLens ? 'Sunglass Tint' : 'Clear Lens');
+const quantity = ref(1);
 const isAdding = ref(false);
 const addSuccess = ref(false);
 
 const aiSuggestionText = computed(() => {
-  if (selectedLens.value.includes('Blue Light')) {
+  if (selectedLens.value === 'Blue-Light Lens') {
     return `Great choice for screen work! ${props.frame.shape} frame in ${selectedColor.value} provides optimal eye coverage with blue light filtering.`;
-  } else if (selectedLens.value.includes('Transition')) {
-    return `Photochromic lenses adapt dynamically indoors and outdoors, perfectly pairing with the ${props.frame.material} build.`;
-  } else if (selectedLens.value.includes('Polarized')) {
-    return `Polarized lenses reduce glare drastically, giving ${props.frame.name} an ultra-stylish sun protection finish.`;
+  } else if (selectedLens.value === 'Gray Tint') {
+    return `The neutral gray tint reduces brightness without overwhelming the ${selectedColor.value} frame finish.`;
+  } else if (selectedLens.value === 'Brown Tint') {
+    return `A warm brown tint adds contrast and pairs naturally with the ${props.frame.material} construction.`;
+  } else if (selectedLens.value === 'Sunglass Tint') {
+    return `The deep sunglass tint gives ${props.frame.name} confident outdoor styling and strong sun comfort.`;
   }
   return `Classic pairing! The ${selectedColor.value} finish beautifully complements ${props.frame.shape} geometric aesthetics.`;
 });
@@ -123,6 +145,8 @@ function onCustomizationChange() {
 }
 
 function handleTintChange(tint) {
+  selectedLens.value = tint.name;
+  onCustomizationChange();
   emit('tint-change', tint);
 }
 
@@ -141,7 +165,7 @@ async function handleAddToCart() {
         frameId: props.frame.id,
         selectedVariant: selectedColor.value,
         lensOption: selectedLens.value,
-        quantity: 1
+        quantity: quantity.value
       })
     });
 

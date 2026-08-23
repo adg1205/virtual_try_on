@@ -26,7 +26,7 @@
             <div
                 id="vue-cart"
                 data-vue-component="CartView"
-                data-vue-props='<%- JSON.stringify({ cartItems: cartItems || [], discount: locals.appliedDiscount || 0 }) %>'
+                data-vue-props='<%- JSON.stringify({ cartItems: cartItems || [], discount: locals.appliedDiscount || 0, deliveryThreshold, flatDeliveryFee }) %>'
             >
                 <!-- SSR Fallback -->
                 <% if (!cartItems || cartItems.length === 0) { %>

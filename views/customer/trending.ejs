@@ -6,11 +6,11 @@
             <div>
                 <h2>🔥 Trending & Popular Indicators</h2>
                 <p class="text-muted-custom mt-1">
-                    Real customer activity metrics over a rolling 30-day window across the platform.
+                    Real customer activity metrics over a rolling <%= windowDays %>-day window across the platform.
                 </p>
             </div>
             <span class="trending-window-badge">
-                📅 Rolling 30-Day Window
+                📅 Rolling <%= windowDays %>-Day Window
             </span>
         </div>
 
@@ -31,7 +31,7 @@
                     <% if (!mostTried || mostTried.length === 0) { %>
                         <div class="text-center py-4 text-muted">
                             <span class="fs-2">📸</span>
-                            <p class="mt-2 small">No try-on history recorded in the last 30 days.</p>
+                            <p class="mt-2 small">No try-on history recorded in the last <%= windowDays %> days.</p>
                         </div>
                     <% } else { %>
                         <div class="d-flex flex-column gap-2">
@@ -69,7 +69,7 @@
                     <% if (!mostWishlisted || mostWishlisted.length === 0) { %>
                         <div class="text-center py-4 text-muted">
                             <span class="fs-2">❤️</span>
-                            <p class="mt-2 small">No wishlist additions recorded in the last 30 days.</p>
+                            <p class="mt-2 small">No wishlist additions recorded in the last <%= windowDays %> days.</p>
                         </div>
                     <% } else { %>
                         <div class="d-flex flex-column gap-2">
@@ -111,7 +111,7 @@
                     <% if (!trendingShapes || trendingShapes.length === 0) { %>
                         <div class="text-center py-4 text-muted">
                             <span class="fs-2">🔷</span>
-                            <p class="mt-2 small">No shape interactions recorded in the last 30 days.</p>
+                            <p class="mt-2 small">No shape interactions recorded in the last <%= windowDays %> days.</p>
                         </div>
                     <% } else { %>
                         <% const maxActivity = trendingShapes[0].total_activity || 1; %>
@@ -149,7 +149,7 @@
                     <% if (!comparedPairs || comparedPairs.length === 0) { %>
                         <div class="text-center py-4 text-muted">
                             <span class="fs-2">⚖️</span>
-                            <p class="mt-2 small">No frame comparisons recorded in the last 30 days.</p>
+                            <p class="mt-2 small">No frame comparisons recorded in the last <%= windowDays %> days.</p>
                             <a href="/customer/compare-frames" class="btn btn-secondary btn-sm mt-2 small">Start Comparing Frames</a>
                         </div>
                     <% } else { %>

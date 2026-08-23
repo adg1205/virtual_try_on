@@ -19,7 +19,7 @@
             <div
                 id="vue-checkout"
                 data-vue-component="CheckoutForm"
-                data-vue-props='<%- JSON.stringify({ user: user || {}, cartItems: cartItems || [], deliveryCharge: typeof deliveryCharge !== "undefined" ? deliveryCharge : 0 }) %>'
+                data-vue-props='<%- JSON.stringify({ user: user || {}, cartItems: cartItems || [], deliveryCharge, deliveryThreshold, flatDeliveryFee }) %>'
             >
                 <!-- SSR Fallback -->
                 <div class="checkout-layout-grid">

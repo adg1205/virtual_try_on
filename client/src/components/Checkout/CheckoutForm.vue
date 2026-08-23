@@ -29,6 +29,7 @@
                   v-model="contactNumber"
                   class="form-control checkout-input"
                   placeholder="01XXXXXXXXX"
+                  maxlength="40"
                   required
                 />
               </div>
@@ -41,6 +42,7 @@
                   class="form-control checkout-input"
                   rows="3"
                   placeholder="House #, Road #, Area, City (e.g. Dhanmondi, Dhaka)"
+                  maxlength="500"
                   required
                 ></textarea>
               </div>
@@ -53,6 +55,7 @@
                   v-model="orderNote"
                   class="form-control checkout-input"
                   placeholder="Special instructions for delivery rider..."
+                  maxlength="500"
                 />
               </div>
             </div>
@@ -178,10 +181,10 @@
             </div>
 
             <!-- Free Delivery Progress Notice -->
-            <div v-if="subtotal < 200 && subtotal > 0" class="mb-3 p-2 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 small text-white-50">
-              <span>🚚 Orders over <strong>৳200.00</strong> get <strong>FREE Delivery</strong>! (Add ৳{{ (200 - subtotal).toFixed(2) }} more)</span>
+            <div v-if="subtotal < deliveryThreshold && subtotal > 0" class="mb-3 p-2 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 small text-white-50">
+              <span>🚚 Orders of <strong>৳{{ deliveryThreshold.toFixed(2) }}</strong> get <strong>FREE Delivery</strong>! (Add ৳{{ (deliveryThreshold - subtotal).toFixed(2) }} more)</span>
             </div>
-            <div v-else-if="subtotal >= 200" class="mb-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 small text-success font-weight-600">
+            <div v-else-if="subtotal >= deliveryThreshold" class="mb-3 p-2 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 small text-success font-weight-600">
               <span>🎉 You qualify for <strong>FREE Delivery</strong>!</span>
             </div>
 
@@ -227,11 +230,19 @@ const props = defineProps({
   deliveryCharge: {
     type: Number,
     default: 0
+  },
+  deliveryThreshold: {
+    type: Number,
+    default: 200
+  },
+  flatDeliveryFee: {
+    type: Number,
+    default: 5
   }
 });
 
 const recipientName = ref(props.user.full_name || props.user.name || '');
-const contactNumber = ref(props.user.phone || '');
+const contactNumber = ref(props.user.phone_number || props.user.phone || '');
 const deliveryAddress = ref(props.user.address || '');
 const orderNote = ref('');
 const selectedPayment = ref('cod');
@@ -252,7 +263,7 @@ const totalItemCount = computed(() => {
 
 const deliveryCharge = computed(() => {
   if (props.cartItems.length === 0) return 0;
-  return subtotal.value >= 200 ? 0 : 5.00;
+  return subtotal.value >= props.deliveryThreshold ? 0 : props.flatDeliveryFee;
 });
 
 const totalAmount = computed(() => {

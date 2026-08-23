@@ -12,6 +12,16 @@ const {
 const {
     normalizeLensTintLabelForFrame
 } = require('../public/js/lens-tint-palette');
+const {
+    DELIVERY_THRESHOLD,
+    FLAT_DELIVERY_FEE,
+    normalizeQuantity,
+    normalizeCartId,
+    normalizeSelectedVariant,
+    calculateCartSummary,
+    normalizeCheckoutDetails,
+    createOrderNumber
+} = require('../utils/cartService');
 
 
 exports.renderDashboard = async (req, res) => {
@@ -335,29 +345,14 @@ exports.getStoresApi = (req, res) => {
 exports.renderCart = async (req, res) => {
     try {
         const cartItems = await db.getUserCart(req.user.id);
-        
-        let subtotal = 0;
-        let totalItemCount = 0;
-        cartItems.forEach(item => {
-            subtotal += item.price * item.quantity;
-            totalItemCount += item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (cartItems.length > 0 && subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
+        const summary = calculateCartSummary(cartItems);
 
         res.render('customer/cart', { 
             title: 'Shopping Cart', 
             user: req.user, 
             currentPage: 'cart',
             cartItems,
-            totalItemCount,
-            subtotal,
-            deliveryCharge,
-            totalAmount,
-            deliveryThreshold
+            ...summary
         });
     } catch (err) {
         console.error("Error rendering cart:", err);
@@ -370,20 +365,24 @@ exports.renderCart = async (req, res) => {
             subtotal: 0,
             deliveryCharge: 0,
             totalAmount: 0,
-            deliveryThreshold: 200.00
+            deliveryThreshold: DELIVERY_THRESHOLD,
+            flatDeliveryFee: FLAT_DELIVERY_FEE
         });
     }
 };
 
 exports.addToCart = async (req, res) => {
     try {
-        const frameId = req.body.frameId || req.body.frame_id || req.params.id;
+        const frameId = normalizeCartId(req.body.frameId || req.body.frame_id || req.params.id);
         const lensOption = req.body.lensOption || req.body.lens_option || 'Clear Standard';
         const selectedVariant = req.body.selectedVariant || req.body.selected_variant || null;
-        const quantity = req.body.quantity || 1;
+        const quantity = normalizeQuantity(req.body.quantity, { defaultValue: 1 });
 
         if (!frameId) {
-            return res.status(400).json({ success: false, error: 'Missing frameId' });
+            return res.status(400).json({ success: false, error: 'A valid frameId is required' });
+        }
+        if (!quantity) {
+            return res.status(400).json({ success: false, error: 'Quantity must be between 1 and 10' });
         }
 
         const frame = await db.getFrameById(frameId);
@@ -395,16 +394,14 @@ exports.addToCart = async (req, res) => {
             return res.status(400).json({ success: false, error: 'This frame is currently out of stock' });
         }
 
-        const itemQty = Math.max(1, Math.min(10, parseInt(quantity, 10) || 1));
-
         await db.addToCart(req.user.id, {
-            frameId: parseInt(frameId, 10),
+            frameId,
             lensOption: normalizeLensTintLabelForFrame(frame, lensOption),
-            quantity: itemQty,
+            quantity,
             // Price is always sourced from the database. Never trust a price
             // submitted by the browser, which a customer could modify.
             price: frame.price,
-            selectedVariant: selectedVariant || frame.color
+            selectedVariant: normalizeSelectedVariant(selectedVariant, frame.color)
         });
 
         const cartItemCount = await db.getCartItemCount(req.user.id);
@@ -423,37 +420,27 @@ exports.addToCart = async (req, res) => {
 
 exports.updateCartItem = async (req, res) => {
     try {
-        const cartId = req.body.cartId || req.body.cartItemId || req.body.id;
-        const quantity = req.body.quantity;
-        if (!cartId || quantity === undefined) {
+        const cartId = normalizeCartId(req.body.cartId || req.body.cartItemId || req.body.id);
+        const newQty = normalizeQuantity(req.body.quantity);
+        if (!cartId || req.body.quantity === undefined) {
             return res.status(400).json({ success: false, error: 'Missing cartId or quantity' });
         }
-
-        const newQty = parseInt(quantity, 10);
-        if (isNaN(newQty) || newQty < 1 || newQty > 10) {
+        if (!newQty) {
             return res.status(400).json({ success: false, error: 'Quantity must be between 1 and 10' });
         }
 
-        await db.updateCartQuantity(req.user.id, parseInt(cartId, 10), newQty);
+        const updatedRows = await db.updateCartQuantity(req.user.id, cartId, newQty);
+        if (updatedRows === 0) {
+            return res.status(404).json({ success: false, error: 'Cart item not found' });
+        }
 
         const cartItems = await db.getUserCart(req.user.id);
-        let subtotal = 0;
-        cartItems.forEach(item => {
-            subtotal += (item.price || 0) * item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (cartItems.length > 0 && subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
-        const cartItemCount = await db.getCartItemCount(req.user.id);
+        const summary = calculateCartSummary(cartItems);
 
         return res.json({
             success: true,
-            subtotal,
-            deliveryCharge,
-            totalAmount,
-            cartItemCount,
+            ...summary,
+            cartItemCount: summary.totalItemCount,
             cartItems
         });
     } catch (err) {
@@ -464,31 +451,23 @@ exports.updateCartItem = async (req, res) => {
 
 exports.removeCartItem = async (req, res) => {
     try {
-        const cartId = req.body.cartId || req.body.cartItemId || req.body.id;
+        const cartId = normalizeCartId(req.body.cartId || req.body.cartItemId || req.body.id);
         if (!cartId) {
-            return res.status(400).json({ success: false, error: 'Missing cartId' });
+            return res.status(400).json({ success: false, error: 'A valid cartId is required' });
         }
 
-        await db.removeFromCart(req.user.id, parseInt(cartId, 10));
+        const removedRows = await db.removeFromCart(req.user.id, cartId);
+        if (removedRows === 0) {
+            return res.status(404).json({ success: false, error: 'Cart item not found' });
+        }
 
         const cartItems = await db.getUserCart(req.user.id);
-        let subtotal = 0;
-        cartItems.forEach(item => {
-            subtotal += (item.price || 0) * item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (cartItems.length > 0 && subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
-        const cartItemCount = await db.getCartItemCount(req.user.id);
+        const summary = calculateCartSummary(cartItems);
 
         return res.json({
             success: true,
-            subtotal,
-            deliveryCharge,
-            totalAmount,
-            cartItemCount,
+            ...summary,
+            cartItemCount: summary.totalItemCount,
             isEmpty: cartItems.length === 0,
             cartItems
         });
@@ -505,28 +484,14 @@ exports.renderCheckout = async (req, res) => {
         if (!cartItems || cartItems.length === 0) {
             return res.redirect('/customer/cart');
         }
-
-        let subtotal = 0;
-        let totalItemCount = 0;
-        cartItems.forEach(item => {
-            subtotal += (item.price || 0) * item.quantity;
-            totalItemCount += item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
+        const summary = calculateCartSummary(cartItems);
 
         res.render('customer/checkout', { 
             title: 'Checkout', 
             user: req.user, 
             currentPage: 'checkout',
             cartItems,
-            totalItemCount,
-            subtotal,
-            deliveryCharge,
-            totalAmount
+            ...summary
         });
     } catch (err) {
         console.error("Error rendering checkout:", err);
@@ -536,42 +501,24 @@ exports.renderCheckout = async (req, res) => {
 
 exports.placeOrder = async (req, res) => {
     try {
-        const { deliveryAddress, contactNumber, orderNote, paymentMethod } = req.body;
-        
-        if (!deliveryAddress || !deliveryAddress.trim()) {
+        const checkout = normalizeCheckoutDetails(req.body);
+        if (!checkout.deliveryAddress) {
             return res.status(400).json({ success: false, error: 'Delivery address is required' });
         }
-        if (!contactNumber || !contactNumber.trim()) {
+        if (!checkout.contactNumber) {
             return res.status(400).json({ success: false, error: 'Contact number is required' });
         }
-        if (!paymentMethod) {
-            return res.status(400).json({ success: false, error: 'Payment method is required' });
-        }
-
-        let method = paymentMethod.toLowerCase().trim();
-        if (method === 'mfs' || method === 'sslcommerz') {
-            method = 'bkash';
-        }
-
-        const validMethods = ['cod', 'card', 'bkash', 'nagad'];
-        if (!validMethods.includes(method)) {
+        if (!checkout.paymentMethod) {
             return res.status(400).json({ success: false, error: 'Invalid payment method selected' });
         }
+        const method = checkout.paymentMethod;
 
         const cartItems = await db.getUserCart(req.user.id);
         if (!cartItems || cartItems.length === 0) {
             return res.status(400).json({ success: false, error: 'Your cart is empty' });
         }
 
-        let subtotal = 0;
-        cartItems.forEach(item => {
-            subtotal += (item.price || 0) * item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
+        const { subtotal, deliveryCharge, totalAmount } = calculateCartSummary(cartItems);
 
         const protocol = req.protocol || 'http';
         const host = req.get('host') || 'localhost:3000';
@@ -579,31 +526,26 @@ exports.placeOrder = async (req, res) => {
 
         // 1. CASH ON DELIVERY (COD) FLOW
         if (method === 'cod') {
-            const timestamp = Date.now().toString().slice(-6);
-            const randomCode = Math.floor(1000 + Math.random() * 9000);
-            const orderNumber = `ORD-${timestamp}-${randomCode}`;
+            const orderNumber = createOrderNumber();
 
-            const orderId = await db.createOrder({
+            const orderId = await db.createOrderFromCart({
                 userId: req.user.id,
                 orderNumber,
-                deliveryAddress: deliveryAddress.trim(),
-                contactNumber: contactNumber.trim(),
-                orderNote: orderNote ? orderNote.trim() : null,
+                deliveryAddress: checkout.deliveryAddress,
+                contactNumber: checkout.contactNumber,
+                orderNote: checkout.orderNote,
                 paymentMethod: 'cod',
                 subtotal,
                 deliveryCharge,
                 totalAmount,
                 status: 'Placed',
                 paymentStatus: 'unpaid'
-            });
-
-            await db.createOrderItems(orderId, cartItems);
-            await db.clearCart(req.user.id);
+            }, cartItems);
 
             // Send order confirmation email asynchronously
             db.getOrderById(orderId, req.user.id).then(order => {
                 if (order) {
-                    emailService.sendOrderConfirmationEmail(order, req.user);
+                    return emailService.sendOrderConfirmationEmail(order, req.user);
                 }
             }).catch(emailErr => console.error("Email send error:", emailErr));
 
@@ -621,9 +563,9 @@ exports.placeOrder = async (req, res) => {
                 const session = await stripeService.createCheckoutSession({
                     amount: totalAmount,
                     orderDetails: {
-                        deliveryAddress: deliveryAddress.trim(),
-                        contactNumber: contactNumber.trim(),
-                        orderNote: orderNote ? orderNote.trim() : null,
+                        deliveryAddress: checkout.deliveryAddress,
+                        contactNumber: checkout.contactNumber,
+                        orderNote: checkout.orderNote,
                         subtotal,
                         deliveryCharge,
                         cartItems
@@ -656,9 +598,9 @@ exports.placeOrder = async (req, res) => {
                     tran_id,
                     amount: totalAmount,
                     orderDetails: {
-                        deliveryAddress: deliveryAddress.trim(),
-                        contactNumber: contactNumber.trim(),
-                        orderNote: orderNote ? orderNote.trim() : null,
+                        deliveryAddress: checkout.deliveryAddress,
+                        contactNumber: checkout.contactNumber,
+                        orderNote: checkout.orderNote,
                         subtotal,
                         deliveryCharge,
                         cartItems
@@ -951,25 +893,31 @@ exports.getForYouApi = async (req, res) => {
 
 exports.renderTrending = async (req, res) => {
     try {
-        const [mostTried, mostWishlisted, trendingShapes, comparedPairs] = await Promise.all([
-            db.getMostTriedFrames(30, 5),
-            db.getMostWishlistedFrames(30, 5),
-            db.getTrendingShapes(30, 5),
-            db.getFrequentlyComparedPairs(30, 5)
-        ]);
+        const indicators = await db.getPopularityIndicators(30, 5);
 
         res.render('customer/trending', {
             title: 'Trending & Popular',
             user: req.user,
             currentPage: 'trending',
-            mostTried,
-            mostWishlisted,
-            trendingShapes,
-            comparedPairs
+            ...indicators
         });
     } catch (err) {
         console.error('Error rendering trending page:', err);
         res.redirect('/customer/dashboard');
+    }
+};
+
+exports.getTrendingApi = async (req, res) => {
+    try {
+        const indicators = await db.getPopularityIndicators(req.query.days, req.query.limit);
+        return res.json({
+            success: true,
+            generatedAt: new Date().toISOString(),
+            ...indicators
+        });
+    } catch (err) {
+        console.error('Error fetching popularity indicators:', err);
+        return res.status(500).json({ success: false, error: 'Failed to fetch popularity indicators' });
     }
 };
 
@@ -1051,30 +999,12 @@ exports.getFrameDetailsApi = async (req, res) => {
 exports.getCartApi = async (req, res) => {
     try {
         const cartItems = await db.getUserCart(req.user.id);
-        let subtotal = 0;
-        let totalItemCount = 0;
-        cartItems.forEach(item => {
-            subtotal += item.price * item.quantity;
-            totalItemCount += item.quantity;
-        });
-
-        const deliveryThreshold = 200.00;
-        const flatDeliveryFee = 5.00;
-        const deliveryCharge = (cartItems.length > 0 && subtotal < deliveryThreshold) ? flatDeliveryFee : 0;
-        const totalAmount = subtotal + deliveryCharge;
+        const summary = calculateCartSummary(cartItems);
 
         return res.json({
             success: true,
             cart: cartItems,
-            summary: {
-                subtotal,
-                deliveryCharge,
-                totalAmount,
-                totalItemCount,
-                deliveryThreshold,
-                freeDeliveryRemaining: Math.max(0, deliveryThreshold - subtotal),
-                hasFreeDelivery: subtotal >= deliveryThreshold
-            }
+            summary
         });
     } catch (err) {
         console.error('Error in getCartApi:', err);

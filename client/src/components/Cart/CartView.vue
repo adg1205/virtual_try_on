@@ -31,6 +31,7 @@
           :discount="appliedDiscount"
           :total="totalAmount"
           :totalItems="totalItemCount"
+          :deliveryThreshold="deliveryThreshold"
         />
       </div>
     </div>
@@ -62,6 +63,14 @@ const props = defineProps({
   discount: {
     type: Number,
     default: 0
+  },
+  deliveryThreshold: {
+    type: Number,
+    default: 200
+  },
+  flatDeliveryFee: {
+    type: Number,
+    default: 5
   }
 });
 
@@ -75,7 +84,10 @@ const {
   totalItemCount,
   updateQuantity,
   removeItem
-} = useCart(props.cartItems, props.discount);
+} = useCart(props.cartItems, props.discount, {
+  deliveryThreshold: props.deliveryThreshold,
+  flatDeliveryFee: props.flatDeliveryFee
+});
 
 function handleUpdateQty(id, newQty) {
   updateQuantity(id, newQty);

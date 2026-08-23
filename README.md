@@ -11,6 +11,13 @@ A Node.js, Express, SQLite, EJS, and Vue application for browsing eyewear, tryin
 
 Styling guidance is subjective and should not be treated as a medical or biometric assessment.
 
+## Cart, ordering, and popularity features
+
+- Frame details store the selected frame ID, canonical lens option, quantity, database-sourced price, and color variant in the customer's cart.
+- Cart quantities can be updated from 1–10 and items can be removed. The server calculates every line subtotal, cart subtotal, delivery charge, free-delivery progress, and total payable amount.
+- Checkout validates delivery address, contact number, optional order note, and payment method. Cash-on-delivery orders, line-item snapshots, and cart clearing are committed in one SQLite transaction; verified Stripe and SSLCommerz callbacks also create persistent order and payment records.
+- The trending page calculates most tried frames, most wishlisted frames, trending shapes, and frequently compared pairs from real activity tables. Shape activity combines try-ons, active wishlists, carts, placed-order quantities, and both frames in each comparison.
+
 ## Setup
 
 Requirements: Node.js 20 or newer and npm.
@@ -75,6 +82,14 @@ The response includes a concise `suggestion` covering frame shape, color, and le
 
 Both routes are mounted under the authenticated customer router.
 
+### Read cart totals
+
+`GET /customer/api/cart` returns the stored cart rows and a server-calculated `summary` containing item subtotals, subtotal, delivery charge, total payable amount, and item count.
+
+### Read popularity indicators
+
+`GET /customer/api/trending?days=30&limit=5` returns the four activity-backed leaderboards. `days` is bounded to 1–365 and `limit` to 1–20.
+
 ## Project structure
 
 ```text
@@ -82,7 +97,10 @@ client/src/components/AiRecommendations/  Face analysis and recommendation UI
 client/src/components/VirtualTryOn/       Try-on and selected-style explanation UI
 controllers/customerController.js         HTTP handlers and catalog lookup
 utils/geminiStylistService.js              Gemini prompts, validation, and fallbacks
+utils/cartService.js                       Cart validation, totals, and checkout normalization
 test/geminiStylistService.test.js          Unit tests with mocked Gemini responses
+test/cartService.test.js                   Pricing and checkout unit tests
+test/commerceDatabase.test.js              Isolated SQLite cart/order/activity integration test
 ```
 
 ## Test

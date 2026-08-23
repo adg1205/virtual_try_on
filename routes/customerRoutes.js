@@ -15,6 +15,7 @@ router.post('/compare-data', customerController.getCompareData);
 router.get('/try-on-history', customerController.renderTryOnHistory);
 router.get('/for-you', customerController.renderForYou);
 router.get('/api/for-you', customerController.getForYouApi);
+router.get('/api/trending', customerController.getTrendingApi);
 router.get('/trending', customerController.renderTrending);
 router.get('/nearby-stores', customerController.renderNearbyStores);
 router.get('/api/stores', customerController.getStoresApi);
