@@ -993,12 +993,13 @@ exports.getFrameDetailsApi = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Frame not found' });
         }
 
-        const [wishlistIds, similarFrames, reviews, reviewStats, userReview] = await Promise.all([
+        const [wishlistIds, similarFrames, reviews, reviewStats, userReview, hasTriedOrOrdered] = await Promise.all([
             db.getUserWishlistIds(req.user.id),
             db.getSimilarFrames(frame.id, 4),
             db.getFrameReviews(frame.id, 5, 0),
             db.getFrameReviewStats(frame.id),
-            db.getUserReviewForFrame(req.user.id, frame.id)
+            db.getUserReviewForFrame(req.user.id, frame.id),
+            db.checkReviewEligibility(req.user.id, frame.id)
         ]);
 
         return res.json({
@@ -1009,7 +1010,9 @@ exports.getFrameDetailsApi = async (req, res) => {
             reviews,
             reviewStats,
             userReview,
-            isEligibleToReview: true
+            // Mirrors renderFrameDetails so an API client shows the same gate
+            // the server-rendered page does.
+            isEligibleToReview: hasTriedOrOrdered || Boolean(userReview)
         });
     } catch (err) {
         console.error('Error in getFrameDetailsApi:', err);
