@@ -62,19 +62,32 @@ document.addEventListener('DOMContentLoaded', () => {
             scrollWheelZoom: true
         }).setView([initialLat, initialLng], initialZoom);
 
-        let tileUrl = `https://tile.openstreetmap.org/{z}/{x}/{y}.png`;
-        let attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+        // The two tile providers do not serve the same tile geometry: MapTiler
+        // returns 512px tiles (so Leaflet must request one zoom level out),
+        // while the OpenStreetMap tile server returns 256px. Declaring 512 for
+        // both upscales every OSM tile to double size and shows the map a zoom
+        // level short, so each source carries its own dimensions.
+        let tileLayerConfig = {
+            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            tileSize: 256,
+            zoomOffset: 0
+        };
 
         if (mapTilerKey && mapTilerKey.trim() !== '' && mapTilerKey !== 'your_maptiler_api_key_here') {
-            tileUrl = `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`;
-            attribution = '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+            tileLayerConfig = {
+                url: `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${mapTilerKey}`,
+                attribution: '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+                tileSize: 512,
+                zoomOffset: -1
+            };
         }
 
-        L.tileLayer(tileUrl, {
+        L.tileLayer(tileLayerConfig.url, {
             maxZoom: 19,
-            tileSize: 512,
-            zoomOffset: -1,
-            attribution: attribution
+            tileSize: tileLayerConfig.tileSize,
+            zoomOffset: tileLayerConfig.zoomOffset,
+            attribution: tileLayerConfig.attribution
         }).addTo(map);
 
         if (Array.isArray(window.STORE_DATA)) {
@@ -104,6 +117,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Every branch card carries name, address, opening hours, contact number,
+    // and — once an origin is known — distance. Both the distance-sorted list
+    // and the reset-to-default list are drawn here so the two never drift.
+    function renderStoreCards(stores) {
+        const container = document.getElementById('stores-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+        stores.forEach(store => {
+            const hasDistance = typeof store.distance === 'number' && isFinite(store.distance);
+            const formattedDist = !hasDistance
+                ? ''
+                : store.distance < 1
+                    ? `${Math.round(store.distance * 1000)} m`
+                    : `${store.distance.toFixed(1)} km`;
+
+            const card = document.createElement('div');
+            card.className = 'store-card glass-panel';
+            card.setAttribute('data-id', store.id);
+            card.setAttribute('data-lat', store.lat);
+            card.setAttribute('data-lng', store.lng);
+            card.setAttribute('data-name', store.name);
+            card.setAttribute('data-area', store.area);
+
+            card.innerHTML = `
+                <div class="store-card-header">
+                    <h4 class="store-name">${escapeHtml(store.name)}</h4>
+                    <span class="distance-badge"${hasDistance ? '' : ' style="display: none;"'}>📍 ${formattedDist}</span>
+                </div>
+                <p class="store-address">📍 ${escapeHtml(store.address)}</p>
+                <div class="store-meta">
+                    <span class="meta-item">🕒 ${escapeHtml(store.hours)} (${escapeHtml(store.openDays || '')})</span>
+                    <span class="meta-item">📞 <a href="tel:${escapeHtml(store.phone)}">${escapeHtml(store.phone)}</a></span>
+                </div>
+                <div class="store-card-actions">
+                    <button class="btn btn-secondary btn-sm btn-focus-store" onclick="focusStoreOnMap(${store.id})">
+                        🔍 View on Map
+                    </button>
+                    <button class="btn btn-primary btn-sm btn-get-directions" onclick="getDirectionsToStore(${store.id})">
+                        🗺️ Get Directions
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        const branchCount = document.getElementById('branch-count');
+        if (branchCount) branchCount.textContent = stores.length;
+    }
+
     function updateDistancesAndSort(originLat, originLng, originLabel) {
         currentUserCoords = { lat: originLat, lng: originLng };
 
@@ -124,45 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         storesWithDist.sort((a, b) => a.distance - b.distance);
-
-        const container = document.getElementById('stores-container');
-        if (container) {
-            container.innerHTML = '';
-            storesWithDist.forEach(store => {
-                const formattedDist = store.distance < 1 
-                    ? `${Math.round(store.distance * 1000)} m`
-                    : `${store.distance.toFixed(1)} km`;
-
-                const card = document.createElement('div');
-                card.className = 'store-card glass-panel';
-                card.setAttribute('data-id', store.id);
-                card.setAttribute('data-lat', store.lat);
-                card.setAttribute('data-lng', store.lng);
-                card.setAttribute('data-name', store.name);
-                card.setAttribute('data-area', store.area);
-
-                card.innerHTML = `
-                    <div class="store-card-header">
-                        <h4 class="store-name">${escapeHtml(store.name)}</h4>
-                        <span class="distance-badge">📍 ${formattedDist}</span>
-                    </div>
-                    <p class="store-address">📍 ${escapeHtml(store.address)}</p>
-                    <div class="store-meta">
-                        <span class="meta-item">🕒 ${escapeHtml(store.hours)} (${escapeHtml(store.openDays || '')})</span>
-                        <span class="meta-item">📞 <a href="tel:${store.phone}">${escapeHtml(store.phone)}</a></span>
-                    </div>
-                    <div class="store-card-actions">
-                        <button class="btn btn-secondary btn-sm btn-focus-store" onclick="focusStoreOnMap(${store.id})">
-                            🔍 View on Map
-                        </button>
-                        <button class="btn btn-primary btn-sm btn-get-directions" onclick="getDirectionsToStore(${store.id})">
-                            🗺️ Get Directions
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+        renderStoreCards(storesWithDist);
 
         const statusDiv = document.getElementById('location-status-bar');
         const statusText = document.getElementById('location-status-text');
@@ -468,7 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (map) map.setView([initialLat, initialLng], initialZoom);
-            document.querySelectorAll('.distance-badge').forEach(el => el.style.display = 'none');
+
+            // Redraw without distances so the list matches the "Default order"
+            // the badge now claims, instead of staying sorted by a location the
+            // customer just cleared.
+            renderStoreCards(window.STORE_DATA || []);
+            const searchBox = document.getElementById('store-search');
+            if (searchBox) searchBox.value = '';
         });
     }
 
