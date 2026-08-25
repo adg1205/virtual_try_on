@@ -230,22 +230,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Directions are only meaningful from a place the customer actually chose.
+    // Ask the device first; a refusal leaves the area picker as the answer.
+    function requestDeviceLocation() {
+        return new Promise(resolve => {
+            if (!navigator.geolocation) return resolve(null);
+            navigator.geolocation.getCurrentPosition(
+                pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+    }
+
+    function promptForStartingPoint(store) {
+        const dirPanel = document.getElementById('directions-panel');
+        document.getElementById('dir-destination-name').textContent = store.name;
+        document.getElementById('dir-destination-address').textContent = store.address;
+        document.getElementById('dir-total-distance').textContent = '--';
+        document.getElementById('dir-total-time').textContent = '--';
+
+        const gmapsLink = document.getElementById('dir-gmaps-link');
+        // Without an origin, hand Google Maps the destination alone and let it
+        // route from wherever the customer opens it.
+        if (gmapsLink) {
+            gmapsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}&travelmode=driving`;
+        }
+
+        document.getElementById('directions-steps-list').innerHTML = `
+            <li class="step-item">
+                <span class="step-num">!</span>
+                <span class="step-icon">📍</span>
+                <div class="step-details">
+                    <p class="step-text">Choose a starting point first — tap <strong>Use My Location</strong> or pick your area from the dropdown, then ask for directions again.</p>
+                </div>
+            </li>
+        `;
+
+        if (dirPanel) {
+            dirPanel.style.display = 'block';
+            dirPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
     window.getDirectionsToStore = async function(storeId) {
         const store = (window.STORE_DATA || []).find(s => s.id === storeId);
         if (!store) return;
 
         if (!currentUserCoords) {
-            const defaultStartLat = 23.7461;
-            const defaultStartLng = 90.3742;
-            currentUserCoords = { lat: defaultStartLat, lng: defaultStartLng };
-            
-            if (userMarker && map) map.removeLayer(userMarker);
-            if (map) {
-                userMarker = L.marker([defaultStartLat, defaultStartLng], {
-                    icon: createUserIcon(),
-                    zIndexOffset: 1000
-                }).addTo(map);
+            const located = await requestDeviceLocation();
+            if (!located) {
+                promptForStartingPoint(store);
+                return;
             }
+            // Reuse the normal location flow so the list re-sorts and the
+            // status bar reflects where the route starts from.
+            updateDistancesAndSort(located.lat, located.lng, 'Your Device Location');
         }
 
         const startLat = currentUserCoords.lat;
@@ -307,11 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (route.legs && route.legs[0] && route.legs[0].steps) {
                     route.legs[0].steps.forEach((step, idx) => {
                         const stepDist = step.distance < 1000 ? `${Math.round(step.distance)} m` : `${(step.distance / 1000).toFixed(1)} km`;
-                        let stepIcon = '➡️';
-                        if (step.maneuver.type.includes('turn-left')) stepIcon = '⬅️';
-                        else if (step.maneuver.type.includes('turn-right')) stepIcon = '➡️';
-                        else if (step.maneuver.type.includes('depart') || step.maneuver.type.includes('straight')) stepIcon = '⬆️';
-                        else if (step.maneuver.type.includes('arrive')) stepIcon = '🏁';
+                        const stepIcon = maneuverIcon(step.maneuver);
 
                         const li = document.createElement('li');
                         li.className = 'step-item';
@@ -379,16 +415,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // OSRM reports the direction of travel in maneuver.modifier; maneuver.type
+    // says what kind of manoeuvre it is. Reading the turn direction off `type`
+    // never matches, which is how every turn ended up with the same arrow.
+    function maneuverIcon(maneuver) {
+        const type = maneuver.type || '';
+        const modifier = maneuver.modifier || '';
+
+        if (type === 'arrive') return '🏁';
+        if (type === 'depart') return '🛫';
+        if (type === 'roundabout' || type === 'rotary' || type === 'roundabout turn') return '🔄';
+        if (type === 'merge') return '🔀';
+        if (type === 'on ramp' || type === 'off ramp') return '🛣️';
+
+        if (modifier === 'uturn') return '↩️';
+        if (modifier.includes('left')) return '⬅️';
+        if (modifier.includes('right')) return '➡️';
+        if (modifier === 'straight') return '⬆️';
+        return '⬆️';
+    }
+
     function formatManeuverText(step) {
         const type = step.maneuver.type;
         const modifier = step.maneuver.modifier || '';
-        const name = step.name ? `<strong>${escapeHtml(step.name)}</strong>` : '';
+        const rawName = step.name || '';
+        const name = rawName ? `<strong>${escapeHtml(rawName)}</strong>` : '';
+        const onto = name ? ` onto ${name}` : '';
+        const on = name ? ` on ${name}` : '';
 
-        if (type === 'depart') return `Head ${modifier} ${name ? 'on ' + name : ''}`;
-        if (type === 'arrive') return `Arrive at destination on your ${modifier || 'right'}`;
-        if (type === 'turn') return `Turn ${modifier} ${name ? 'onto ' + name : ''}`;
-        if (type === 'new name') return `Continue ${modifier} onto ${name}`;
-        return `${type} ${modifier} ${name}`;
+        if (type === 'depart') return `Head ${modifier}${on}`.trim();
+        if (type === 'arrive') return `Arrive at your destination on the ${modifier || 'right'}`;
+        if (type === 'turn') {
+            return modifier === 'uturn' ? `Make a U-turn${onto}` : `Turn ${modifier}${onto}`;
+        }
+        if (type === 'new name') return `Continue${modifier && modifier !== 'straight' ? ' ' + modifier : ''}${onto}`;
+        if (type === 'continue') {
+            return modifier === 'uturn' ? `Make a U-turn${onto}` : `Continue ${modifier}${on}`.trim();
+        }
+        if (type === 'end of road') return `At the end of the road, turn ${modifier}${onto}`;
+        if (type === 'fork') return `Keep ${modifier} at the fork${onto}`;
+        if (type === 'merge') return `Merge ${modifier}${onto}`.replace('  ', ' ');
+        if (type === 'on ramp') return `Take the ramp${modifier ? ' on the ' + modifier : ''}${onto}`;
+        if (type === 'off ramp') return `Take the exit${modifier ? ' on the ' + modifier : ''}${onto}`;
+        if (type === 'roundabout' || type === 'rotary') {
+            const exit = step.maneuver.exit ? ` and take exit ${step.maneuver.exit}` : '';
+            return `Enter the roundabout${exit}${onto}`;
+        }
+        if (type === 'exit roundabout' || type === 'exit rotary') return `Exit the roundabout${onto}`;
+        if (type === 'roundabout turn') return `At the roundabout, turn ${modifier}${onto}`;
+
+        return `Continue ${modifier}${on}`.replace(/\s+/g, ' ').trim();
     }
 
     window.closeDirections = function() {
