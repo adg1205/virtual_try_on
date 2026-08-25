@@ -123,7 +123,9 @@ const filteredFrames = computed(() => {
       (f.name && f.name.toLowerCase().includes(q)) ||
       (f.brand && f.brand.toLowerCase().includes(q)) ||
       (f.shape && f.shape.toLowerCase().includes(q)) ||
-      (f.color && f.color.toLowerCase().includes(q))
+      (f.color && f.color.toLowerCase().includes(q)) ||
+      (f.material && f.material.toLowerCase().includes(q)) ||
+      (f.size && f.size.toLowerCase().includes(q))
     );
   }
 

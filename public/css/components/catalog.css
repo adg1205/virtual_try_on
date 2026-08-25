@@ -101,6 +101,14 @@
     transition: transform 0.4s ease;
 }
 
+.frame-card-image-wrap > a {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .frame-card:hover .frame-card-img {
     transform: scale(1.06);
 }
@@ -199,12 +207,23 @@
     gap: 0.5rem;
 }
 
-.frame-card-name {
+.frame-card-name,
+.frame-card-title {
     font-size: 1.05rem;
     font-weight: 700;
     margin: 0;
     color: var(--text-primary, #f1f1f1);
     line-height: 1.3;
+}
+
+.frame-card-details-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.frame-card-details-link:hover,
+.frame-card-details-link:focus-visible {
+    color: var(--primary, #a78bfa);
 }
 
 .frame-card-brand {
@@ -242,10 +261,12 @@
 .tag-shape    { background: rgba(124, 58, 237, 0.2);  border: 1px solid rgba(124, 58, 237, 0.35); color: #c4b5fd; }
 .tag-color    { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3);  color: #fcd34d; }
 .tag-material { background: rgba(6, 182, 212, 0.15);  border: 1px solid rgba(6, 182, 212, 0.3);   color: #67e8f9; }
+.tag-size     { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; }
 
 /* --- Actions --- */
 .frame-card-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
     margin-top: auto;
 }
@@ -254,6 +275,16 @@
     flex: 1; 
     text-align: center; 
     font-size: 0.85rem; 
+}
+
+.wishlist-action-btn {
+    grid-column: 1 / -1;
+}
+
+.wishlist-action-btn.wishlist-action-active {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.5);
+    background: rgba(248, 113, 113, 0.12);
 }
 
 .btn-disabled-frame {

@@ -931,18 +931,27 @@ exports.getFramesApi = async (req, res) => {
         const sortBy = allowedSorts.includes(req.query.sort) ? req.query.sort : '';
         let frames = await db.getAllFramesSorted(sortBy);
 
-        // Optional filtering by search, shape, color, material
+        // Optional filtering by search, shape, color, material, and size
         const search = req.query.search ? req.query.search.toLowerCase().trim() : '';
         const shape = req.query.shape ? req.query.shape.toLowerCase().trim() : '';
         const color = req.query.color ? req.query.color.toLowerCase().trim() : '';
         const material = req.query.material ? req.query.material.toLowerCase().trim() : '';
+        const size = req.query.size ? req.query.size.toLowerCase().trim() : '';
 
-        if (search || shape || color || material) {
+        if (search || shape || color || material || size) {
             frames = frames.filter(f => {
-                if (search && !((f.name || '').toLowerCase().includes(search) || (f.brand || '').toLowerCase().includes(search))) return false;
+                if (search && ![
+                    f.name,
+                    f.brand,
+                    f.shape,
+                    f.color,
+                    f.material,
+                    f.size
+                ].some(value => (value || '').toLowerCase().includes(search))) return false;
                 if (shape && (f.shape || '').toLowerCase() !== shape) return false;
                 if (color && (f.color || '').toLowerCase() !== color) return false;
                 if (material && (f.material || '').toLowerCase() !== material) return false;
+                if (size && (f.size || '').toLowerCase() !== size) return false;
                 return true;
             });
         }

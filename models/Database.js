@@ -18,6 +18,13 @@ function closeDatabase() {
 
 function initializeDatabase() {
     return new Promise((resolve, reject) => {
+        let framesReady = false;
+        let schemaReady = false;
+
+        const resolveWhenReady = () => {
+            if (framesReady && schemaReady) resolve();
+        };
+
         db.serialize(async () => {
             // Create Frames table
             db.run(`
@@ -30,9 +37,36 @@ function initializeDatabase() {
                     shape TEXT NOT NULL DEFAULT 'Rectangular',
                     color TEXT NOT NULL DEFAULT 'Black',
                     material TEXT NOT NULL DEFAULT 'Acetate',
+                    size TEXT NOT NULL DEFAULT 'Medium',
                     availability INTEGER NOT NULL DEFAULT 1,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
+            `, (err) => {
+                if (err) return reject(err);
+            });
+
+            // Backward-compatible migration for databases created before frame
+            // size became part of the catalog and similarity criteria. SQLite
+            // does not support ADD COLUMN IF NOT EXISTS, so the duplicate-column
+            // error is intentionally ignored for current databases.
+            db.run('ALTER TABLE frames ADD COLUMN size TEXT NOT NULL DEFAULT \'Medium\'', (err) => {
+                if (err && !/duplicate column name/i.test(err.message)) {
+                    return reject(err);
+                }
+            });
+
+            // Give the bundled legacy records meaningful size values.
+            db.run(`
+                UPDATE frames
+                SET size = CASE name
+                    WHEN 'Classic Aviator' THEN 'Large'
+                    WHEN 'Round Metal' THEN 'Small'
+                    WHEN 'Geometric Bold' THEN 'Large'
+                    WHEN 'Oval Vintage' THEN 'Small'
+                    WHEN 'Sport Wrap' THEN 'Large'
+                    ELSE size
+                END
+                WHERE size IS NULL OR TRIM(size) = '' OR size = 'Medium'
             `, (err) => {
                 if (err) return reject(err);
             });
@@ -75,18 +109,25 @@ function initializeDatabase() {
             db.get("SELECT COUNT(*) AS count FROM frames", (err, row) => {
                 if (err) return reject(err);
                 if (row.count === 0) {
-                    const insert = db.prepare(`INSERT INTO frames (name, brand, price, image_url, shape, color, material, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-                    insert.run("Classic Aviator", "Ray-Ban", 150.00, "/images/frames/aviator.png", "Aviator", "Gold", "Metal", 1);
-                    insert.run("Wayfarer Classic", "Ray-Ban", 160.00, "/images/frames/wayfarer.png", "Rectangular", "Black", "Acetate", 1);
-                    insert.run("Round Metal", "Oakley", 140.00, "/images/frames/round.png", "Round", "Silver", "Metal", 1);
-                    insert.run("Clubmaster", "Gucci", 250.00, "/images/frames/clubmaster.png", "Browline", "Tortoise", "Acetate", 1);
-                    insert.run("Titan Slim", "Titan", 95.00, "/images/frames/titan.png", "Rectangular", "Gunmetal", "Titanium", 1);
-                    insert.run("Cat Eye Luxe", "Prada", 310.00, "/images/frames/cateye.png", "Cat Eye", "Rose Gold", "Metal", 0);
-                    insert.run("Geometric Bold", "Versace", 275.00, "/images/frames/geometric.png", "Geometric", "Black", "Acetate", 1);
-                    insert.run("Oval Vintage", "Persol", 195.00, "/images/frames/oval.png", "Oval", "Honey Brown", "Acetate", 1);
-                    insert.run("Sport Wrap", "Oakley", 120.00, "/images/frames/sport.png", "Wrap", "Matte Black", "Nylon", 1);
-                    insert.run("Square Minimalist", "Warby Parker", 85.00, "/images/frames/square.png", "Square", "Crystal Clear", "Acetate", 0);
-                    insert.finalize();
+                    const insert = db.prepare(`INSERT INTO frames (name, brand, price, image_url, shape, color, material, size, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    insert.run("Classic Aviator", "Ray-Ban", 150.00, "/images/frames/aviator.png", "Aviator", "Gold", "Metal", "Large", 1);
+                    insert.run("Wayfarer Classic", "Ray-Ban", 160.00, "/images/frames/wayfarer.png", "Rectangular", "Black", "Acetate", "Medium", 1);
+                    insert.run("Round Metal", "Oakley", 140.00, "/images/frames/round.png", "Round", "Silver", "Metal", "Small", 1);
+                    insert.run("Clubmaster", "Gucci", 250.00, "/images/frames/clubmaster.png", "Browline", "Tortoise", "Acetate", "Medium", 1);
+                    insert.run("Titan Slim", "Titan", 95.00, "/images/frames/titan.png", "Rectangular", "Gunmetal", "Titanium", "Medium", 1);
+                    insert.run("Cat Eye Luxe", "Prada", 310.00, "/images/frames/cateye.png", "Cat Eye", "Rose Gold", "Metal", "Medium", 0);
+                    insert.run("Geometric Bold", "Versace", 275.00, "/images/frames/geometric.png", "Geometric", "Black", "Acetate", "Large", 1);
+                    insert.run("Oval Vintage", "Persol", 195.00, "/images/frames/oval.png", "Oval", "Honey Brown", "Acetate", "Small", 1);
+                    insert.run("Sport Wrap", "Oakley", 120.00, "/images/frames/sport.png", "Wrap", "Matte Black", "Nylon", "Large", 1);
+                    insert.run("Square Minimalist", "Warby Parker", 85.00, "/images/frames/square.png", "Square", "Crystal Clear", "Acetate", "Medium", 0);
+                    insert.finalize((insertErr) => {
+                        if (insertErr) return reject(insertErr);
+                        framesReady = true;
+                        resolveWhenReady();
+                    });
+                } else {
+                    framesReady = true;
+                    resolveWhenReady();
                 }
             });
 
@@ -261,7 +302,8 @@ function initializeDatabase() {
                 )
             `, (err) => {
                 if (err) return reject(err);
-                resolve();
+                schemaReady = true;
+                resolveWhenReady();
             });
         });
     });
@@ -548,23 +590,27 @@ function findBestInStockAlternative(targetFrame, allFrames) {
 
     inStockCandidates.forEach(cand => {
         let score = 0;
-        // Shape match: 40 points
+        // Shape match: 30 points
         if (cand.shape && targetFrame.shape && cand.shape.toLowerCase() === targetFrame.shape.toLowerCase()) {
-            score += 40;
+            score += 30;
         }
-        // Material match: 25 points
+        // Material match: 20 points
         if (cand.material && targetFrame.material && cand.material.toLowerCase() === targetFrame.material.toLowerCase()) {
-            score += 25;
+            score += 20;
         }
         // Color match: 15 points
         if (cand.color && targetFrame.color && cand.color.toLowerCase() === targetFrame.color.toLowerCase()) {
             score += 15;
         }
-        // Price proximity match: up to 20 points
+        // Size match: 20 points
+        if (cand.size && targetFrame.size && cand.size.toLowerCase() === targetFrame.size.toLowerCase()) {
+            score += 20;
+        }
+        // Price proximity match: up to 15 points
         if (targetFrame.price > 0) {
             const priceDiffRatio = Math.abs(cand.price - targetFrame.price) / targetFrame.price;
             if (priceDiffRatio <= 0.30) {
-                score += (1 - (priceDiffRatio / 0.30)) * 20;
+                score += (1 - (priceDiffRatio / 0.30)) * 15;
             }
         }
 
@@ -583,7 +629,8 @@ function findBestInStockAlternative(targetFrame, allFrames) {
         price: bestMatch.price,
         shape: bestMatch.shape,
         color: bestMatch.color,
-        material: bestMatch.material
+        material: bestMatch.material,
+        size: bestMatch.size
     };
 }
 
@@ -600,29 +647,40 @@ function getSimilarFrames(frameId, limit = 4) {
 
                 const scoredCandidates = candidates.map(candidate => {
                     let score = 0;
+                    const matchReasons = [];
 
-                    // Shape match: 40 points
-                    if (candidate.shape.toLowerCase() === currentFrame.shape.toLowerCase()) {
-                        score += 40;
+                    // Shape match: 30 points
+                    if (candidate.shape && currentFrame.shape && candidate.shape.toLowerCase() === currentFrame.shape.toLowerCase()) {
+                        score += 30;
+                        matchReasons.push('shape');
                     }
 
-                    // Material match: 25 points
-                    if (candidate.material.toLowerCase() === currentFrame.material.toLowerCase()) {
-                        score += 25;
+                    // Material match: 20 points
+                    if (candidate.material && currentFrame.material && candidate.material.toLowerCase() === currentFrame.material.toLowerCase()) {
+                        score += 20;
+                        matchReasons.push('material');
                     }
 
                     // Color match: 15 points
-                    if (candidate.color.toLowerCase() === currentFrame.color.toLowerCase()) {
+                    if (candidate.color && currentFrame.color && candidate.color.toLowerCase() === currentFrame.color.toLowerCase()) {
                         score += 15;
+                        matchReasons.push('color');
                     }
 
-                    // Price proximity match: max 20 points
+                    // Size match: 20 points
+                    if (candidate.size && currentFrame.size && candidate.size.toLowerCase() === currentFrame.size.toLowerCase()) {
+                        score += 20;
+                        matchReasons.push('size');
+                    }
+
+                    // Price proximity match: max 15 points
                     // Standard diff ratio within ±30% range
                     if (currentFrame.price > 0) {
                         const priceDiffRatio = Math.abs(candidate.price - currentFrame.price) / currentFrame.price;
                         if (priceDiffRatio <= 0.30) {
-                            const priceScore = (1 - (priceDiffRatio / 0.30)) * 20;
+                            const priceScore = (1 - (priceDiffRatio / 0.30)) * 15;
                             score += priceScore;
+                            matchReasons.push('price');
                         }
                     }
 
@@ -637,6 +695,7 @@ function getSimilarFrames(frameId, limit = 4) {
                     return {
                         ...candidate,
                         similarityScore,
+                        matchReasons,
                         isOutOfStock
                     };
                 });

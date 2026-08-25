@@ -54,6 +54,10 @@
                             <span class="fd-spec-value"><%= frame.material %></span>
                         </div>
                         <div class="fd-spec-item">
+                            <span class="fd-spec-label">↔ Size</span>
+                            <span class="fd-spec-value"><%= frame.size %></span>
+                        </div>
+                        <div class="fd-spec-item">
                             <span class="fd-spec-label">🆔 Frame ID</span>
                             <span class="fd-spec-value">#<%= frame.id %></span>
                         </div>
@@ -116,7 +120,7 @@
                                 <span>✨</span> You May Also Like
                             </h3>
                             <p class="similar-frames-subtitle">
-                                Similar frame suggestions based on shape, material, color, and price range
+                                Database suggestions based on shape, material, color, size, and price range
                             </p>
                         </div>
                     </div>
@@ -158,6 +162,7 @@
                                         <span class="frame-tag tag-shape">🔷 <%= sFrame.shape %></span>
                                         <span class="frame-tag tag-material">💎 <%= sFrame.material %></span>
                                         <span class="frame-tag tag-color">🎨 <%= sFrame.color %></span>
+                                        <span class="frame-tag tag-size">↔ <%= sFrame.size %></span>
                                     </div>
 
                                     <!-- Out of Stock Alternative Suggestion Row -->

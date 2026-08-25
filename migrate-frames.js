@@ -27,6 +27,7 @@ db.serialize(() => {
             shape TEXT NOT NULL DEFAULT 'Rectangular',
             color TEXT NOT NULL DEFAULT 'Black',
             material TEXT NOT NULL DEFAULT 'Acetate',
+            size TEXT NOT NULL DEFAULT 'Medium',
             availability INTEGER NOT NULL DEFAULT 1
         )
     `, (err) => {
@@ -36,21 +37,21 @@ db.serialize(() => {
 
     db.serialize(() => {
         const insert = db.prepare(`
-            INSERT INTO frames (name, brand, price, image_url, shape, color, material, availability)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO frames (name, brand, price, image_url, shape, color, material, size, availability)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const frames = [
-            ['Classic Aviator',   'Ray-Ban',      150.00, '/images/frames/aviator.png',    'Aviator',     'Gold',          'Metal',    1],
-            ['Wayfarer Classic',  'Ray-Ban',       160.00, '/images/frames/wayfarer.png',   'Rectangular', 'Black',         'Acetate',  1],
-            ['Round Metal',       'Oakley',        140.00, '/images/frames/round.png',      'Round',       'Silver',        'Metal',    1],
-            ['Clubmaster',        'Gucci',         250.00, '/images/frames/clubmaster.png', 'Browline',    'Tortoise',      'Acetate',  1],
-            ['Titan Slim',        'Titan',          95.00, '/images/frames/titan.png',      'Rectangular', 'Gunmetal',      'Titanium', 1],
-            ['Cat Eye Luxe',      'Prada',         310.00, '/images/frames/cateye.png',     'Cat Eye',     'Rose Gold',     'Metal',    0],
-            ['Geometric Bold',    'Versace',       275.00, '/images/frames/geometric.png',  'Geometric',   'Black',         'Acetate',  1],
-            ['Oval Vintage',      'Persol',        195.00, '/images/frames/oval.png',       'Oval',        'Honey Brown',   'Acetate',  1],
-            ['Sport Wrap',        'Oakley',        120.00, '/images/frames/sport.png',      'Wrap',        'Matte Black',   'Nylon',    1],
-            ['Square Minimalist', 'Warby Parker',   85.00, '/images/frames/square.png',     'Square',      'Crystal Clear', 'Acetate',  0],
+            ['Classic Aviator',   'Ray-Ban',      150.00, '/images/frames/aviator.png',    'Aviator',     'Gold',          'Metal',    'Large',  1],
+            ['Wayfarer Classic',  'Ray-Ban',       160.00, '/images/frames/wayfarer.png',   'Rectangular', 'Black',         'Acetate',  'Medium', 1],
+            ['Round Metal',       'Oakley',        140.00, '/images/frames/round.png',      'Round',       'Silver',        'Metal',    'Small',  1],
+            ['Clubmaster',        'Gucci',         250.00, '/images/frames/clubmaster.png', 'Browline',    'Tortoise',      'Acetate',  'Medium', 1],
+            ['Titan Slim',        'Titan',          95.00, '/images/frames/titan.png',      'Rectangular', 'Gunmetal',      'Titanium', 'Medium', 1],
+            ['Cat Eye Luxe',      'Prada',         310.00, '/images/frames/cateye.png',     'Cat Eye',     'Rose Gold',     'Metal',    'Medium', 0],
+            ['Geometric Bold',    'Versace',       275.00, '/images/frames/geometric.png',  'Geometric',   'Black',         'Acetate',  'Large',  1],
+            ['Oval Vintage',      'Persol',        195.00, '/images/frames/oval.png',       'Oval',        'Honey Brown',   'Acetate',  'Small',  1],
+            ['Sport Wrap',        'Oakley',        120.00, '/images/frames/sport.png',      'Wrap',        'Matte Black',   'Nylon',    'Large',  1],
+            ['Square Minimalist', 'Warby Parker',   85.00, '/images/frames/square.png',     'Square',      'Crystal Clear', 'Acetate',  'Medium', 0],
         ];
 
         frames.forEach(frame => insert.run(frame));

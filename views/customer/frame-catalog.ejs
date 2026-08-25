@@ -18,16 +18,46 @@
                 <!-- SSR Fallback -->
                 <div class="frame-catalog-grid" id="frameCatalogGrid">
                     <% frames.forEach(frame => { %>
-                        <div class="frame-card glass-panel">
+                        <% const isWishlisted = (wishlistIds || []).includes(frame.id); %>
+                        <article class="frame-card glass-panel <%= frame.availability ? '' : 'frame-card-oos' %>">
                             <div class="frame-card-image-wrap">
-                                <img src="<%= frame.image_url %>" alt="<%= frame.name %>" class="frame-card-img img-fluid">
+                                <a href="/customer/frame-details/<%= frame.id %>" aria-label="View <%= frame.name %> details">
+                                    <img src="<%= frame.image_url %>" alt="<%= frame.name %>" class="frame-card-img img-fluid">
+                                </a>
+                                <span class="availability-badge <%= frame.availability ? 'badge-in-stock' : 'badge-out-of-stock' %>">
+                                    <span class="badge-dot"></span>
+                                    <%= frame.availability ? 'In Stock' : 'Out of Stock' %>
+                                </span>
                             </div>
                             <div class="frame-card-body">
-                                <h3 class="frame-card-name"><%= frame.name %></h3>
-                                <p class="frame-card-brand"><%= frame.brand %></p>
-                                <p class="frame-card-price">৳<%= Number(frame.price).toFixed(2) %></p>
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <h3 class="frame-card-name">
+                                            <a href="/customer/frame-details/<%= frame.id %>" class="frame-card-details-link"><%= frame.name %></a>
+                                        </h3>
+                                        <p class="frame-card-brand"><%= frame.brand %></p>
+                                    </div>
+                                    <p class="frame-card-price">৳<%= Number(frame.price).toFixed(2) %></p>
+                                </div>
+                                <div class="frame-card-tags" aria-label="Frame specifications">
+                                    <span class="frame-tag tag-shape">Shape: <%= frame.shape %></span>
+                                    <span class="frame-tag tag-color">Color: <%= frame.color %></span>
+                                    <span class="frame-tag tag-material">Material: <%= frame.material %></span>
+                                    <span class="frame-tag tag-size">Size: <%= frame.size %></span>
+                                </div>
+                                <div class="frame-card-actions">
+                                    <a href="/customer/virtual-try-on?frameId=<%= frame.id %>" class="btn btn-primary py-2 small">Try On</a>
+                                    <a href="/customer/frame-details/<%= frame.id %>" class="btn btn-secondary py-2 small">Details</a>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary py-2 small wishlist-action-btn catalog-fallback-wishlist <%= isWishlisted ? 'wishlist-action-active' : '' %>"
+                                        data-frame-id="<%= frame.id %>"
+                                        data-wishlisted="<%= isWishlisted %>"
+                                        aria-pressed="<%= isWishlisted %>"
+                                    ><%= isWishlisted ? '♥ Saved to Wishlist' : '♡ Add to Wishlist' %></button>
+                                </div>
                             </div>
-                        </div>
+                        </article>
                     <% }); %>
                 </div>
             </div>
@@ -35,4 +65,5 @@
     </section>
 </div>
 
+<script src="/js/frame-catalog.js"></script>
 <%- include('../partials/footer') %>
