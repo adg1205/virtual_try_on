@@ -252,11 +252,17 @@ exports.renderWishlist = async (req, res) => {
 
 exports.renderCompareFrames = async (req, res) => {
     try {
-        const frames = await db.getAllFrames();
-        res.render('customer/compare-frames', { title: 'Compare Frames', user: req.user, currentPage: 'compare-frames', frames });
+        // Ship the customer's saved try-on captures with the page so the matrix
+        // can render a preview for any frame they pick without an extra request
+        // per column.
+        const [frames, tryOnPreviews] = await Promise.all([
+            db.getAllFrames(),
+            db.getLatestTryOnsForUser(req.user.id)
+        ]);
+        res.render('customer/compare-frames', { title: 'Compare Frames', user: req.user, currentPage: 'compare-frames', frames, tryOnPreviews });
     } catch (err) {
         console.error('Error fetching frames for comparison:', err);
-        res.render('customer/compare-frames', { title: 'Compare Frames', user: req.user, currentPage: 'compare-frames', frames: [] });
+        res.render('customer/compare-frames', { title: 'Compare Frames', user: req.user, currentPage: 'compare-frames', frames: [], tryOnPreviews: {} });
     }
 };
 

@@ -19,7 +19,7 @@
             <div
                 id="vue-compare"
                 data-vue-component="CompareMatrix"
-                data-vue-props='<%- JSON.stringify({ allFrames: frames || [], initialFrames: [] }) %>'
+                data-vue-props='<%- JSON.stringify({ allFrames: frames || [], initialFrames: [], tryOnPreviews: tryOnPreviews || {} }) %>'
             >
                 <!-- SSR Fallback -->
                 <div class="glass-panel compare-selection-section">

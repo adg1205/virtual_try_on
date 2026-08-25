@@ -221,3 +221,109 @@
     transform: none;
     vertical-align: middle;
 }
+
+/* ==========================================================================
+   Try-On Preview Row
+   ========================================================================== */
+
+.compare-tryon-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.compare-tryon-img {
+    width: 108px;
+    height: 108px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.compare-tryon-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted, #9ca3af);
+}
+
+/* Frames the customer has not tried on yet still occupy a column, so the empty
+   state matches the preview footprint and keeps the row from jumping. */
+.compare-tryon-empty {
+    justify-content: center;
+    min-height: 108px;
+    width: 108px;
+    margin: 0 auto;
+    border-radius: 12px;
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem;
+}
+
+.compare-tryon-placeholder {
+    font-size: 1.5rem;
+    opacity: 0.55;
+}
+
+.compare-tryon-cta {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    text-align: center;
+    color: var(--accent-secondary, #38bdf8);
+    text-decoration: none;
+}
+
+.compare-tryon-cta:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   AI Style Suggestion Row
+   ========================================================================== */
+
+.compare-style-td {
+    vertical-align: top;
+}
+
+.compare-style-cell {
+    min-width: 190px;
+    max-width: 280px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.compare-style-text {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #e5e7eb;
+}
+
+.compare-style-loading {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+}
+
+.compare-style-source {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    color: var(--text-muted, #9ca3af);
+    opacity: 0.8;
+}
+
+.compare-style-error {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+}
+
+.compare-style-retry {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 0.25rem;
+    font: inherit;
+    color: var(--accent-secondary, #38bdf8);
+    text-decoration: underline;
+    cursor: pointer;
+}

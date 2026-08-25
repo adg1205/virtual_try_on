@@ -587,6 +587,32 @@ function getLatestTryOnForFrame(userId, frameId) {
     });
 }
 
+// The comparison matrix shows a try-on preview for every selected frame, so it
+// needs the newest capture per frame in a single round trip rather than one
+// query per column. Selecting on MAX(id) keeps the newest row unambiguous when
+// two captures share a created_at second.
+function getLatestTryOnsForUser(userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT frame_id, image_url, lens_option, color_option, face_shape, created_at
+            FROM tryon_history t
+            WHERE t.user_id = ?
+              AND t.id = (
+                  SELECT MAX(t2.id) FROM tryon_history t2
+                  WHERE t2.user_id = t.user_id AND t2.frame_id = t.frame_id
+              )
+        `;
+        db.all(sql, [userId], (err, rows) => {
+            if (err) return reject(err);
+            const byFrameId = {};
+            (rows || []).forEach(row => {
+                byFrameId[row.frame_id] = row;
+            });
+            resolve(byFrameId);
+        });
+    });
+}
+
 function findBestInStockAlternative(targetFrame, allFrames) {
     if (!targetFrame) return null;
     const inStockCandidates = allFrames.filter(f => f.id !== targetFrame.id && f.availability == 1);
@@ -1651,6 +1677,7 @@ module.exports = {
     deleteTryOnHistory,
     getUserTryOnCount,
     getLatestTryOnForFrame,
+    getLatestTryOnsForUser,
     addToCart,
     getUserCart,
     updateCartQuantity,
