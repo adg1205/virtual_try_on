@@ -24,15 +24,15 @@
             <!-- STATUS TRACKING TIMELINE -->
             <div class="glass-panel ot-timeline-panel">
                 
-                <% if (order.status === 'Cancelled') { %>
+                <% if (order.status === 'Cancelled' || order.status === 'Cancellation Requested') { %>
                     <div class="text-center py-2">
                         <div class="fs-1 mb-2">❌</div>
-                        <h3 class="text-danger fs-5 font-weight-700 mb-1">Order Cancelled</h3>
-                        <p class="text-muted-custom small">This order was cancelled and is no longer being processed.</p>
+                        <h3 class="text-danger fs-5 font-weight-700 mb-1"><%= order.status %></h3>
+                        <p class="text-muted-custom small"><%= order.status === 'Cancellation Requested' ? 'Your cancellation request is recorded and awaiting review.' : 'This order was cancelled and is no longer being processed.' %></p>
                     </div>
                 <% } else { %>
                     <% 
-                        const stages = ['Placed', 'Processing', 'Shipped', 'Delivered'];
+                        const stages = ['Placed', 'Confirmed', 'Processing', 'Shipped', 'Delivered'];
                         const currentIdx = stages.indexOf(order.status) !== -1 ? stages.indexOf(order.status) : 0;
                         const progressPct = (currentIdx / (stages.length - 1)) * 100;
                     %>
@@ -70,6 +70,14 @@
                 <% } %>
 
             </div>
+
+            <% if (['Placed', 'Confirmed'].includes(order.status)) { %>
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="button" class="btn btn-sm btn-cancel-order rounded-pill px-3" data-order-id="<%= order.id %>">
+                        Request cancellation
+                    </button>
+                </div>
+            <% } %>
 
             <!-- DETAILS GRID -->
             <div class="order-details-grid">
@@ -184,4 +192,5 @@
 </div>
 
 <script src="/js/order-tracking.js" defer></script>
+<script src="/js/my-orders.js" defer></script>
 <%- include('../partials/footer') %>

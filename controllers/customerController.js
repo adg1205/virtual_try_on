@@ -13,6 +13,10 @@ const {
     normalizeLensTintLabelForFrame
 } = require('../public/js/lens-tint-palette');
 const {
+    normalizeOverlaySettings,
+    validateTryOnImageData
+} = require('../utils/tryOnService');
+const {
     DELIVERY_THRESHOLD,
     FLAT_DELIVERY_FEE,
     normalizeQuantity,
@@ -58,14 +62,30 @@ exports.renderDashboard = async (req, res) => {
 exports.renderVirtualTryOn = async (req, res) => {
     try {
         let frame = null;
-        if (req.query.frameId) {
+        let savedTryOn = null;
+        const historyId = parseInt(req.query.historyId, 10);
+        if (Number.isInteger(historyId) && historyId > 0) {
+            const savedRecord = await db.getTryOnHistoryById(historyId, req.user.id);
+            if (savedRecord) {
+                savedTryOn = {
+                    id: savedRecord.id,
+                    frame_id: savedRecord.frame_id,
+                    lens_option: savedRecord.lens_option,
+                    color_option: savedRecord.color_option,
+                    face_shape: savedRecord.face_shape,
+                    created_at: savedRecord.created_at,
+                    overlay_settings: normalizeOverlaySettings(savedRecord.overlay_settings)
+                };
+                frame = await db.getFrameById(savedRecord.frame_id);
+            }
+        } else if (req.query.frameId) {
             frame = await db.getFrameById(req.query.frameId);
         }
         const frames = await db.getAllFrames();
-        res.render('customer/virtual-try-on', { title: 'Virtual Try-On', user: req.user, currentPage: 'virtual-try-on', frame, frames });
+        res.render('customer/virtual-try-on', { title: 'Virtual Try-On', user: req.user, currentPage: 'virtual-try-on', frame, frames, savedTryOn });
     } catch (err) {
         console.error('Error fetching frame for try-on:', err);
-        res.render('customer/virtual-try-on', { title: 'Virtual Try-On', user: req.user, currentPage: 'virtual-try-on', frame: null, frames: [] });
+        res.render('customer/virtual-try-on', { title: 'Virtual Try-On', user: req.user, currentPage: 'virtual-try-on', frame: null, frames: [], savedTryOn: null });
     }
 };
 
@@ -313,7 +333,8 @@ exports.renderTryOnHistory = async (req, res) => {
     try {
         const historyItems = (await db.getUserTryOnHistory(req.user.id)).map(item => ({
             ...item,
-            lens_option: normalizeLensTintLabelForFrame(item, item.lens_option)
+            lens_option: normalizeLensTintLabelForFrame(item, item.lens_option),
+            overlay_settings: normalizeOverlaySettings(item.overlay_settings)
         }));
         res.render('customer/try-on-history', { 
             title: 'Try-On History', 
@@ -687,10 +708,10 @@ exports.cancelOrder = async (req, res) => {
 
         const changes = await db.cancelOrder(parseInt(orderId, 10), req.user.id);
         if (changes === 0) {
-            return res.status(400).json({ success: false, error: 'Order cannot be cancelled or was not found' });
+            return res.status(409).json({ success: false, error: 'Cancellation is only available before the order starts processing.' });
         }
 
-        return res.json({ success: true });
+        return res.json({ success: true, status: 'Cancellation Requested' });
     } catch (err) {
         console.error("Error cancelling order:", err);
         return res.status(500).json({ success: false, error: 'Failed to cancel order' });
@@ -753,10 +774,12 @@ exports.getAIStyleSuggestion = async (req, res) => {
 
 exports.addToWishlist = async (req, res) => {
     try {
-        const { frameId } = req.body;
-        if (!frameId) {
+        const frameId = parseInt(req.body.frameId, 10);
+        if (!Number.isInteger(frameId) || frameId < 1) {
             return res.status(400).json({ success: false, error: 'Missing frameId' });
         }
+        const frame = await db.getFrameById(frameId);
+        if (!frame) return res.status(404).json({ success: false, error: 'Frame not found' });
         await db.addToWishlist(req.user.id, frameId);
         res.json({ success: true });
     } catch (err) {
@@ -767,8 +790,8 @@ exports.addToWishlist = async (req, res) => {
 
 exports.removeFromWishlist = async (req, res) => {
     try {
-        const { frameId } = req.body;
-        if (!frameId) {
+        const frameId = parseInt(req.body.frameId, 10);
+        if (!Number.isInteger(frameId) || frameId < 1) {
             return res.status(400).json({ success: false, error: 'Missing frameId' });
         }
         await db.removeFromWishlist(req.user.id, frameId);
@@ -781,9 +804,15 @@ exports.removeFromWishlist = async (req, res) => {
 
 exports.saveTryOnResult = async (req, res) => {
     try {
-        const { imageData, frameId, lensOption, colorOption, faceShape } = req.body;
+        const { imageData, lensOption, colorOption, faceShape, overlaySettings } = req.body;
+        const frameId = parseInt(req.body.frameId, 10);
         if (!imageData || !frameId) {
             return res.status(400).json({ success: false, error: 'Missing imageData or frameId' });
+        }
+
+        const imageValidation = validateTryOnImageData(imageData);
+        if (!imageValidation.valid) {
+            return res.status(400).json({ success: false, error: imageValidation.error });
         }
 
         const frame = await db.getFrameById(frameId);
@@ -794,7 +823,7 @@ exports.saveTryOnResult = async (req, res) => {
         let imageUrl = '';
         let publicId = '';
 
-        if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name') {
+        if (cloudinaryService.isConfigured()) {
             const uploadResult = await cloudinaryService.uploadImage(imageData);
             imageUrl = uploadResult.secure_url;
             publicId = uploadResult.public_id;
@@ -806,12 +835,13 @@ exports.saveTryOnResult = async (req, res) => {
 
         const historyId = await db.saveTryOnResult({
             userId: req.user.id,
-            frameId: parseInt(frameId, 10),
+            frameId,
             imageUrl,
             cloudinaryPublicId: publicId,
             lensOption: normalizeLensTintLabelForFrame(frame, lensOption),
             colorOption: colorOption || frame.color,
-            faceShape: faceShape || null
+            faceShape: faceShape || null,
+            overlaySettings: JSON.stringify(normalizeOverlaySettings(overlaySettings))
         });
 
         return res.json({ success: true, historyId, imageUrl });
@@ -833,17 +863,12 @@ exports.deleteTryOnResult = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid historyId' });
         }
 
-        const item = await db.getTryOnHistoryById(numericId);
+        const item = await db.getTryOnHistoryById(numericId, req.user.id);
         if (!item) {
             return res.status(404).json({ success: false, error: 'History item not found' });
         }
 
-        if (parseInt(item.user_id, 10) !== parseInt(req.user.id, 10)) {
-            return res.status(403).json({ success: false, error: 'Unauthorized to delete this item' });
-        }
-
-        if (process.env.CLOUDINARY_CLOUD_NAME && 
-            process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name' && 
+        if (cloudinaryService.isConfigured() &&
             item.cloudinary_public_id && 
             !item.cloudinary_public_id.startsWith('local_')) {
             try {
@@ -853,7 +878,8 @@ exports.deleteTryOnResult = async (req, res) => {
             }
         }
 
-        await db.deleteTryOnHistory(numericId);
+        const deleted = await db.deleteTryOnHistory(numericId, req.user.id);
+        if (!deleted) return res.status(404).json({ success: false, error: 'History item not found' });
         return res.json({ success: true });
     } catch (err) {
         console.error('Error deleting try-on result:', err);
@@ -1059,6 +1085,9 @@ exports.toggleWishlistApi = async (req, res) => {
         if (isNaN(frameId)) {
             return res.status(400).json({ success: false, error: 'Valid frameId is required' });
         }
+
+        const frame = await db.getFrameById(frameId);
+        if (!frame) return res.status(404).json({ success: false, error: 'Frame not found' });
 
         const wishlistIds = await db.getUserWishlistIds(req.user.id);
         const isCurrentlyWishlisted = wishlistIds.includes(frameId);

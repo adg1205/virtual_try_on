@@ -7,6 +7,14 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+function isConfigured() {
+    return [
+        process.env.CLOUDINARY_CLOUD_NAME,
+        process.env.CLOUDINARY_API_KEY,
+        process.env.CLOUDINARY_API_SECRET
+    ].every(value => value && !String(value).startsWith('your_'));
+}
+
 /**
  * Uploads a base64 image string to Cloudinary
  * @param {string} base64DataUri - Base64 encoded image data (e.g. "data:image/jpeg;base64,...")
@@ -16,7 +24,9 @@ async function uploadImage(base64DataUri) {
     try {
         const result = await cloudinary.uploader.upload(base64DataUri, {
             folder: 'tryon-results',
-            resource_type: 'image'
+            resource_type: 'image',
+            overwrite: false,
+            unique_filename: true
         });
         return {
             secure_url: result.secure_url,
@@ -45,6 +55,7 @@ async function deleteImage(publicId) {
 }
 
 module.exports = {
+    isConfigured,
     uploadImage,
     deleteImage
 };

@@ -1,63 +1,55 @@
 <template>
   <div class="tryon-history-root">
-    <div v-if="historyItems.length > 0" class="history-grid">
-      <div
-        v-for="item in historyItems"
-        :key="item.id"
-        class="glass-panel history-card p-3 rounded-4"
-      >
-        <div class="history-thumb-wrap mb-3 position-relative rounded-3 overflow-hidden">
-          <img
-            :src="item.image_url || item.snapshot_image || item.snapshot_url || item.frame_catalog_image"
-            :alt="`${item.frame_name} Try-On Snapshot`"
-            class="history-thumb-img"
-            @error="handleImgError"
-          />
-          <span v-if="item.face_shape || item.detected_face_shape" class="history-shape-pill position-absolute top-0 start-0 m-2 badge rounded-pill px-2 py-1 small">
-            📐 {{ item.face_shape || item.detected_face_shape }} Face
-          </span>
-          <span v-if="item.lens_option && item.lens_option !== 'Clear Standard' && item.lens_option !== 'Clear Lens'" class="position-absolute bottom-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small text-info border border-info border-opacity-25">
-            👁️ {{ item.lens_option }}
-          </span>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
-            <h4 class="fs-6 font-weight-700 text-white mb-0">{{ item.frame_name }}</h4>
-            <span class="small text-muted-custom">{{ item.brand || 'Optical Collection' }}</span>
+    <template v-if="historyItems.length">
+      <div class="history-mobile-list d-lg-none">
+        <article v-for="item in historyItems" :key="item.id" class="glass-panel history-card p-3 rounded-4">
+          <img :src="imageFor(item)" :alt="`${item.frame_name} saved try-on`" class="history-thumb-img rounded-3" @error="handleImgError" />
+          <div class="d-flex justify-content-between gap-3 mt-3">
+            <div>
+              <h3 class="fs-6 text-white mb-1">{{ item.frame_name }}</h3>
+              <p class="small text-white-50 mb-0">{{ item.brand }} · {{ item.lens_option }}</p>
+            </div>
+            <time class="small text-white-50 text-nowrap">{{ formatDate(item.created_at) }}</time>
           </div>
-          <span class="small text-white-50">{{ formatDate(item.created_at) }}</span>
-        </div>
+          <div class="history-actions mt-3">
+            <a :href="reuseUrl(item)" class="btn btn-primary btn-sm rounded-pill">Reuse look</a>
+            <a :href="`/customer/frame-details/${item.frame_id}`" class="btn btn-secondary btn-sm rounded-pill">Frame details</a>
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" :disabled="deletingId === item.id" @click="deleteSnapshot(item.id)">
+              {{ deletingId === item.id ? 'Deleting...' : 'Delete' }}
+            </button>
+          </div>
+        </article>
+      </div>
 
-        <div class="d-flex gap-2 pt-2 border-top border-secondary border-opacity-25">
-          <a :href="`/customer/virtual-try-on?frameId=${item.frame_id}`" class="btn btn-primary btn-sm flex-grow-1 rounded-pill">
-            📸 Re-Try Look
-          </a>
-          <a :href="`/customer/frame-details/${item.frame_id}`" class="btn btn-secondary btn-sm rounded-pill px-3" title="View Frame">
-            👓
-          </a>
-          <button
-            type="button"
-            class="btn btn-danger btn-sm rounded-pill px-3"
-            title="Delete Snapshot"
-            @click="deleteSnapshot(item.id)"
-          >
-            🗑️
-          </button>
+      <div class="history-desktop-table d-none d-lg-block glass-panel rounded-4 overflow-hidden">
+        <div class="table-responsive">
+          <table class="table table-dark table-borderless align-middle mb-0 history-table">
+            <thead><tr><th>Saved look</th><th>Frame</th><th>Lens & fit</th><th>Saved</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+              <tr v-for="item in historyItems" :key="item.id">
+                <td><img :src="imageFor(item)" :alt="`${item.frame_name} saved try-on`" class="history-table-thumb rounded-3" @error="handleImgError" /></td>
+                <td><strong>{{ item.frame_name }}</strong><small class="d-block text-white-50">{{ item.brand }}</small></td>
+                <td><span>{{ item.lens_option }}</span><small class="d-block text-white-50">{{ fitSummary(item.overlay_settings) }}</small></td>
+                <td>{{ formatDate(item.created_at) }}</td>
+                <td>
+                  <div class="d-flex justify-content-end gap-2">
+                    <a :href="reuseUrl(item)" class="btn btn-primary btn-sm rounded-pill">Reuse</a>
+                    <a :href="`/customer/frame-details/${item.frame_id}`" class="btn btn-secondary btn-sm rounded-pill">Details</a>
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" :disabled="deletingId === item.id" @click="deleteSnapshot(item.id)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+    </template>
 
-    <!-- Empty History State -->
-    <div v-else class="glass-panel text-center py-5 rounded-4 mx-auto" style="max-width: 600px;">
+    <div v-else class="glass-panel text-center py-5 rounded-4 mx-auto history-empty">
       <div class="fs-1 mb-2">📸</div>
-      <h3 class="fs-4 text-white font-weight-700 mb-2">No Try-On History Yet</h3>
-      <p class="small text-muted-custom mb-4" style="max-width: 420px; margin: 0 auto; line-height: 1.6;">
-        Try on frames using your camera or photo upload and save snapshots to compare how they look on your face!
-      </p>
-      <a href="/customer/frame-catalog" class="btn btn-primary rounded-pill px-4 py-2 font-weight-700 d-inline-flex align-items-center gap-2">
-        <span>👓</span> Explore Catalog & Try On
-      </a>
+      <h3 class="fs-4 text-white mb-2">No Try-On History Yet</h3>
+      <p class="small text-white-50 mb-4">Adjust a frame in the virtual studio and save the final result here.</p>
+      <a href="/customer/frame-catalog" class="btn btn-primary rounded-pill px-4">Explore frames</a>
     </div>
   </div>
 </template>
@@ -65,89 +57,53 @@
 <script setup>
 import { ref } from 'vue';
 
-const props = defineProps({
-  initialHistory: {
-    type: Array,
-    default: () => []
-  }
-});
-
+const props = defineProps({ initialHistory: { type: Array, default: () => [] } });
 const historyItems = ref([...props.initialHistory]);
+const deletingId = ref(null);
 
-function handleImgError(e) {
-  e.target.src = 'https://placehold.co/400x300/1a1a2e/a78bfa?text=📸+Try-On+Snapshot';
+function imageFor(item) { return item.image_url || item.frame_catalog_image; }
+function reuseUrl(item) { return `/customer/virtual-try-on?historyId=${encodeURIComponent(item.id)}`; }
+function handleImgError(event) { event.target.src = 'https://placehold.co/400x300/1a1a2e/a78bfa?text=Saved+Try-On'; }
+function fitSummary(settings = {}) {
+  const scale = Math.round(Number(settings.scale || 1) * 100);
+  const rotation = Math.round(Number(settings.rotation || 0));
+  return `${scale}% size · ${rotation}° rotation`;
 }
 
 async function deleteSnapshot(id) {
-  if (!confirm('Are you sure you want to delete this saved snapshot?')) return;
-
-  historyItems.value = historyItems.value.filter(item => item.id !== id);
+  if (!window.confirm('Delete this saved try-on result?')) return;
+  deletingId.value = id;
   try {
-    const res = await fetch('/customer/tryon-history/delete', {
+    const response = await fetch('/customer/tryon-history/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ historyId: id })
     });
-    const data = await res.json();
-    if (!data.success) {
-      console.warn('Delete response failed:', data);
-    }
-  } catch (err) {
-    console.error('Failed to delete history item:', err);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Delete failed');
+    historyItems.value = historyItems.value.filter(item => item.id !== id);
+  } catch (error) {
+    window.alert(error.message || 'Could not delete the saved result.');
+  } finally {
+    deletingId.value = null;
   }
 }
 
-function formatDate(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr.includes('T') ? isoStr : isoStr.replace(' ', 'T') + (isoStr.includes('Z') ? '' : 'Z'));
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+function formatDate(value) {
+  if (!value) return '';
+  const iso = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  return new Date(iso).toLocaleString('en-BD', { dateStyle: 'medium', timeStyle: 'short' });
 }
 </script>
 
 <style scoped>
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.history-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.history-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-}
-
-.history-thumb-wrap {
-  width: 100%;
-  height: 220px;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.history-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center center;
-  transition: transform 0.4s ease;
-}
-
-.history-card:hover .history-thumb-img {
-  transform: scale(1.05);
-}
-
-.history-shape-pill {
-  background: rgba(124, 58, 237, 0.85);
-  border: 1px solid rgba(167, 139, 250, 0.4);
-  backdrop-filter: blur(6px);
-}
+.history-mobile-list { display: grid; gap: 1rem; }
+.history-thumb-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: rgba(0, 0, 0, .35); }
+.history-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.history-table { --bs-table-bg: transparent; }
+.history-table thead { background: rgba(255, 255, 255, .05); }
+.history-table th, .history-table td { padding: 1rem; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.history-table-thumb { width: 112px; height: 76px; object-fit: cover; background: rgba(0, 0, 0, .35); }
+.history-empty { max-width: 600px; }
+@media (min-width: 768px) and (max-width: 991.98px) { .history-mobile-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

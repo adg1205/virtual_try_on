@@ -10,7 +10,7 @@
             <div
                 id="vue-virtual-try-on"
                 data-vue-component="VirtualTryOn"
-                data-vue-props='<%- JSON.stringify({ initialFrame: frame || {}, framesList: (typeof frames !== "undefined" ? frames : (frame ? [frame] : [])) }) %>'
+                data-vue-props='<%- JSON.stringify({ initialFrame: frame || {}, framesList: (typeof frames !== "undefined" ? frames : (frame ? [frame] : [])), savedTryOn: (typeof savedTryOn !== "undefined" ? savedTryOn : null) }) %>'
             >
                 <!-- SSR Fallback -->
                 <div id="tryonContainer" class="tryon-container glass-panel p-3 p-md-4">

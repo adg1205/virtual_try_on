@@ -16,6 +16,25 @@ function closeDatabase() {
     });
 }
 
+function ensureColumn(tableName, columnName, definition) {
+    return new Promise((resolve, reject) => {
+        db.all(`PRAGMA table_info(${tableName})`, (error, columns) => {
+            if (error) return reject(error);
+            if (columns.some(column => column.name === columnName)) return resolve();
+            db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`, (alterError) => {
+                if (alterError) reject(alterError);
+                else resolve();
+            });
+        });
+    });
+}
+
+async function ensureCustomerFeatureColumns() {
+    await ensureColumn('tryon_history', 'overlay_settings', "TEXT NOT NULL DEFAULT '{}'");
+    await ensureColumn('orders', 'payment_status', "TEXT DEFAULT 'unpaid'");
+    await ensureColumn('orders', 'cancellation_requested_at', 'DATETIME');
+}
+
 function initializeDatabase() {
     return new Promise((resolve, reject) => {
         let framesReady = false;
@@ -169,6 +188,7 @@ function initializeDatabase() {
                     lens_option TEXT DEFAULT 'Clear Lens',
                     color_option TEXT,
                     face_shape TEXT,
+                    overlay_settings TEXT NOT NULL DEFAULT '{}',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY(frame_id) REFERENCES frames(id) ON DELETE CASCADE
@@ -211,6 +231,8 @@ function initializeDatabase() {
                     delivery_charge REAL NOT NULL DEFAULT 0,
                     total_amount REAL NOT NULL,
                     status TEXT NOT NULL DEFAULT 'Placed',
+                    payment_status TEXT DEFAULT 'unpaid',
+                    cancellation_requested_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -309,8 +331,12 @@ function initializeDatabase() {
                 )
             `, (err) => {
                 if (err) return reject(err);
-                schemaReady = true;
-                resolveWhenReady();
+                ensureCustomerFeatureColumns()
+                    .then(() => {
+                        schemaReady = true;
+                        resolveWhenReady();
+                    })
+                    .catch(reject);
             });
         });
     });
@@ -518,7 +544,7 @@ function getUserWishlistIds(userId) {
 
 function saveTryOnResult(data) {
     return new Promise((resolve, reject) => {
-        const sql = `INSERT INTO tryon_history (user_id, frame_id, image_url, cloudinary_public_id, lens_option, color_option, face_shape) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tryon_history (user_id, frame_id, image_url, cloudinary_public_id, lens_option, color_option, face_shape, overlay_settings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
         db.run(sql, [
             data.userId,
             data.frameId,
@@ -526,7 +552,8 @@ function saveTryOnResult(data) {
             data.cloudinaryPublicId,
             data.lensOption || 'Clear Lens',
             data.colorOption || null,
-            data.faceShape || null
+            data.faceShape || null,
+            data.overlaySettings || '{}'
         ], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
@@ -550,18 +577,26 @@ function getUserTryOnHistory(userId) {
     });
 }
 
-function getTryOnHistoryById(id) {
+function getTryOnHistoryById(id, userId = null) {
     return new Promise((resolve, reject) => {
-        db.get("SELECT * FROM tryon_history WHERE id = ?", [id], (err, row) => {
+        const sql = userId === null
+            ? "SELECT * FROM tryon_history WHERE id = ?"
+            : "SELECT * FROM tryon_history WHERE id = ? AND user_id = ?";
+        const params = userId === null ? [id] : [id, userId];
+        db.get(sql, params, (err, row) => {
             if (err) reject(err);
             else resolve(row);
         });
     });
 }
 
-function deleteTryOnHistory(id) {
+function deleteTryOnHistory(id, userId = null) {
     return new Promise((resolve, reject) => {
-        db.run("DELETE FROM tryon_history WHERE id = ?", [id], function(err) {
+        const sql = userId === null
+            ? "DELETE FROM tryon_history WHERE id = ?"
+            : "DELETE FROM tryon_history WHERE id = ? AND user_id = ?";
+        const params = userId === null ? [id] : [id, userId];
+        db.run(sql, params, function(err) {
             if (err) reject(err);
             else resolve(this.changes);
         });
@@ -1048,16 +1083,33 @@ function createPaidOrderFromCart(orderData, items, paymentData) {
 
 function getUserOrders(userId) {
     return new Promise((resolve, reject) => {
-        const sql = `
-            SELECT o.*, 
-                   COALESCE((SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id), 0) AS total_items
-            FROM orders o
-            WHERE o.user_id = ? AND o.status != 'Cancelled'
-            ORDER BY o.created_at DESC
-        `;
+        const sql = `SELECT o.* FROM orders o WHERE o.user_id = ? ORDER BY o.created_at DESC`;
         db.all(sql, [userId], (err, rows) => {
             if (err) reject(err);
-            else resolve(rows);
+            else if (!rows.length) resolve([]);
+            else {
+                const placeholders = rows.map(() => '?').join(', ');
+                db.all(
+                    `SELECT * FROM order_items WHERE order_id IN (${placeholders}) ORDER BY id ASC`,
+                    rows.map(order => order.id),
+                    (itemsError, items) => {
+                        if (itemsError) return reject(itemsError);
+                        const itemsByOrder = new Map();
+                        for (const item of items) {
+                            if (!itemsByOrder.has(item.order_id)) itemsByOrder.set(item.order_id, []);
+                            itemsByOrder.get(item.order_id).push(item);
+                        }
+                        resolve(rows.map(order => {
+                            const orderItems = itemsByOrder.get(order.id) || [];
+                            return {
+                                ...order,
+                                items: orderItems,
+                                total_items: orderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+                            };
+                        }));
+                    }
+                );
+            }
         });
     });
 }
@@ -1089,7 +1141,15 @@ function getOrderById(orderId, userId = null) {
 
 function cancelOrder(orderId, userId) {
     return new Promise((resolve, reject) => {
-        const sql = `UPDATE orders SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND status = 'Placed'`;
+        const sql = `
+            UPDATE orders
+            SET status = 'Cancellation Requested',
+                cancellation_requested_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND user_id = ?
+              AND status IN ('Placed', 'Confirmed')
+        `;
         db.run(sql, [orderId, userId], function(err) {
             if (err) reject(err);
             else resolve(this.changes);

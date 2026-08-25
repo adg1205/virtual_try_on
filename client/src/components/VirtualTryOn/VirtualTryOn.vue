@@ -1,5 +1,8 @@
 <template>
   <div class="virtual-tryon-root">
+    <div v-if="savedTryOn && savedTryOn.id" class="alert alert-info border-0 rounded-4 mb-3 tryon-restored-banner">
+      Saved look settings restored. Choose Live Mirror, Camera, or Upload Photo to reuse this frame, lens, and fit.
+    </div>
     <!-- TOP STAGE HEADER: CURRENT FRAME & CONTROLS -->
     <div class="tryon-stage-header glass-panel mb-3 p-3 rounded-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
       <div class="d-flex align-items-center gap-3">
@@ -253,6 +256,31 @@
           </div>
         </div>
       </div>
+
+      <div class="tryon-adjustment-panel mt-3 pt-3 border-top border-secondary border-opacity-25">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="small font-weight-700 text-uppercase text-muted-custom">Adjust Frame Fit</span>
+          <button type="button" class="btn btn-link btn-sm text-info p-0" @click="resetOverlaySettings">Reset</button>
+        </div>
+        <div class="row g-3">
+          <label class="col-12 col-md-6 col-xl-3 small text-white-50">
+            Size {{ Math.round(overlayScale * 100) }}%
+            <input v-model.number="overlayScale" type="range" min="0.75" max="1.35" step="0.01" class="form-range" @input="handleOverlayAdjustment" />
+          </label>
+          <label class="col-12 col-md-6 col-xl-3 small text-white-50">
+            Horizontal {{ Math.round(overlayOffsetX * 100) }}%
+            <input v-model.number="overlayOffsetX" type="range" min="-0.2" max="0.2" step="0.005" class="form-range" @input="handleOverlayAdjustment" />
+          </label>
+          <label class="col-12 col-md-6 col-xl-3 small text-white-50">
+            Vertical {{ Math.round(overlayOffsetY * 100) }}%
+            <input v-model.number="overlayOffsetY" type="range" min="-0.2" max="0.2" step="0.005" class="form-range" @input="handleOverlayAdjustment" />
+          </label>
+          <label class="col-12 col-md-6 col-xl-3 small text-white-50">
+            Rotation {{ Number(overlayRotation).toFixed(0) }}deg
+            <input v-model.number="overlayRotation" type="range" min="-20" max="20" step="1" class="form-range" @input="handleOverlayAdjustment" />
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- GEMINI AI OPTICAL STYLIST & MATCH EXPLANATION PANEL -->
@@ -312,8 +340,27 @@ const props = defineProps({
   framesList: {
     type: Array,
     default: () => []
+  },
+  savedTryOn: {
+    type: Object,
+    default: null
   }
 });
+
+function clamp(value, fallback, minimum, maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(maximum, Math.max(minimum, parsed));
+}
+
+const restoredOverlay = props.savedTryOn && props.savedTryOn.overlay_settings
+  ? props.savedTryOn.overlay_settings
+  : {};
+const overlayScale = ref(clamp(restoredOverlay.scale, 1, 0.75, 1.35));
+const overlayOffsetX = ref(clamp(restoredOverlay.offsetX, 0, -0.2, 0.2));
+const overlayOffsetY = ref(clamp(restoredOverlay.offsetY, 0, -0.2, 0.2));
+const overlayRotation = ref(clamp(restoredOverlay.rotation, 0, -20, 20));
+const overlayOpacity = ref(clamp(restoredOverlay.opacity, 1, 0.35, 1));
 
 // View modes: 'landing' (3 options), 'live-mirror', 'camera-capture', 'photo-result'
 const viewMode = ref('landing');
@@ -768,6 +815,21 @@ function setTint(tint) {
   }
 }
 
+function handleOverlayAdjustment() {
+  if (viewMode.value === 'photo-result' && capturedImageSrc.value) {
+    renderPhotoOverlay();
+  }
+}
+
+function resetOverlaySettings() {
+  overlayScale.value = 1;
+  overlayOffsetX.value = 0;
+  overlayOffsetY.value = 0;
+  overlayRotation.value = 0;
+  overlayOpacity.value = 1;
+  handleOverlayAdjustment();
+}
+
 function switchFrame(frame) {
   currentFrame.value = frame;
   loadFrameOverlay(frame);
@@ -913,9 +975,9 @@ function drawGlassesAndTemples(ctx, landmarks, canvasW, canvasH) {
   const dx = rightX - leftX;
   const dy = rightY - leftY;
   const eyeDistance = Math.hypot(dx, dy);
-  const angle = Math.atan2(dy, dx);
+  const angle = Math.atan2(dy, dx) + (overlayRotation.value * Math.PI / 180);
 
-  const bridgeX = (noseBridge ? noseBridge.x : (leftEye.x + rightEye.x) / 2) * canvasW;
+  const bridgeX = (noseBridge ? noseBridge.x : (leftEye.x + rightEye.x) / 2) * canvasW + overlayOffsetX.value * canvasW;
   const bridgeY = (noseBridge ? noseBridge.y : (leftEye.y + rightEye.y) / 2) * canvasH;
 
   const HINGE_PROFILES = {
@@ -959,13 +1021,13 @@ function drawGlassesAndTemples(ctx, landmarks, canvasW, canvasH) {
   const faceWidthAtTemples = (leftEar && rightEar)
     ? Math.hypot((rightEar.x - leftEar.x) * canvasW, (rightEar.y - leftEar.y) * canvasH)
     : eyeDistance * 1.55;
-  const frameWidth = Math.min(eyeDistance * 1.76, faceWidthAtTemples * 1.12);
+  const frameWidth = Math.min(eyeDistance * 1.76, faceWidthAtTemples * 1.12) * overlayScale.value;
 
   const aspect = (overlayImg.naturalHeight && overlayImg.naturalWidth)
     ? (overlayImg.naturalHeight / overlayImg.naturalWidth)
     : 0.38;
   const frameHeight = frameWidth * aspect;
-  const frameCenterY = bridgeY + frameHeight * 0.02;
+  const frameCenterY = bridgeY + frameHeight * 0.02 + overlayOffsetY.value * canvasH;
 
   // Convert the selected frame's normalized hinge locations into canvas
   // coordinates. These values are shared by both the live and photo renderers.
@@ -1009,6 +1071,7 @@ function drawGlassesAndTemples(ctx, landmarks, canvasW, canvasH) {
 
   // 1. DRAW TEMPLES BEHIND FRONT FRAME (Hinge aligned to ears for all frames)
   ctx.save();
+  ctx.globalAlpha = overlayOpacity.value;
   ctx.strokeStyle = templeColor;
   ctx.lineWidth = Math.max(2.5, frameWidth * 0.022);
   ctx.lineCap = 'round';
@@ -1035,6 +1098,7 @@ function drawGlassesAndTemples(ctx, landmarks, canvasW, canvasH) {
 
   // 2. DRAW AUTHENTIC PHOTOREALISTIC CATALOG FRONT FRAME ON TOP
   ctx.save();
+  ctx.globalAlpha = overlayOpacity.value;
   ctx.translate(bridgeX, frameCenterY);
   ctx.rotate(angle);
 
@@ -1232,19 +1296,18 @@ function takeStillPhoto() {
 function captureSnapshotFromLive() {
   if (!videoEl.value || !canvasEl.value) return;
   const video = videoEl.value;
-  const overlayCanvas = canvasEl.value;
 
   const compCanvas = document.createElement('canvas');
   compCanvas.width = video.videoWidth || 640;
   compCanvas.height = video.videoHeight || 480;
   const ctx = compCanvas.getContext('2d');
 
-  // Draw background mirrored photo
+  // Capture a clean mirrored base photo. The adjustable overlay is rendered
+  // once in the result editor so saved fit settings match the final image.
   ctx.save();
   ctx.translate(compCanvas.width, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0, compCanvas.width, compCanvas.height);
-  ctx.drawImage(overlayCanvas, 0, 0, compCanvas.width, compCanvas.height);
   ctx.restore();
 
   cachedPhotoLandmarks = null;
@@ -1426,7 +1489,14 @@ async function saveSnapshotToHistory() {
         imageData: finalData,
         faceShape: detectedShape.value || 'Oval',
         lensOption: activeTintName.value,
-        colorOption: currentFrame.value.color
+        colorOption: currentFrame.value.color,
+        overlaySettings: {
+          scale: overlayScale.value,
+          offsetX: overlayOffsetX.value,
+          offsetY: overlayOffsetY.value,
+          rotation: overlayRotation.value,
+          opacity: overlayOpacity.value
+        }
       })
     });
     const data = await res.json();
@@ -1453,6 +1523,13 @@ function downloadSnapshot() {
 }
 
 onMounted(() => {
+  if (props.savedTryOn) {
+    const restoredTint = availableTints.find(tint =>
+      tint.name.toLowerCase() === String(props.savedTryOn.lens_option || '').toLowerCase()
+    );
+    if (restoredTint) activeTintId.value = restoredTint.id;
+    detectedShape.value = props.savedTryOn.face_shape || null;
+  }
   if (currentFrame.value) {
     loadFrameOverlay(currentFrame.value);
   }

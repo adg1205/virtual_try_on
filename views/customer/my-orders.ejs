@@ -63,6 +63,11 @@
                                     <!-- ITEMS COUNT -->
                                     <td class="p-3 text-center font-weight-600 text-white small">
                                         <%= order.total_items %> Item<%= order.total_items > 1 ? 's' : '' %>
+                                        <% if (order.items && order.items.length) { %>
+                                            <div class="text-muted-custom mt-1" style="max-width: 220px;">
+                                                <%= order.items.slice(0, 2).map(item => `${item.frame_name} x ${item.quantity}`).join(', ') %><%= order.items.length > 2 ? ` +${order.items.length - 2} more` : '' %>
+                                            </div>
+                                        <% } %>
                                     </td>
 
                                     <!-- PAYMENT METHOD -->
@@ -90,6 +95,8 @@
                                                 badgeClass = 'mo-status-delivered';
                                             } else if (order.status === 'Cancelled') {
                                                 badgeClass = 'mo-status-cancelled';
+                                            } else if (order.status === 'Cancellation Requested') {
+                                                badgeClass = 'mo-status-cancelled';
                                             }
                                         %>
                                         <span id="order-status-badge-<%= order.id %>" class="mo-status-badge <%= badgeClass %>">
@@ -103,9 +110,9 @@
                                             <a href="/customer/order-tracking/<%= order.id %>" class="btn btn-secondary btn-sm rounded-pill px-3 py-1 small">
                                                 📍 Track
                                             </a>
-                                            <% if (order.status === 'Placed') { %>
+                                            <% if (['Placed', 'Confirmed'].includes(order.status)) { %>
                                                 <button type="button" class="btn btn-sm btn-cancel-order rounded-pill px-3 py-1 small" data-order-id="<%= order.id %>">
-                                                    ✖ Cancel
+                                                    Request cancellation
                                                 </button>
                                             <% } %>
                                         </div>
