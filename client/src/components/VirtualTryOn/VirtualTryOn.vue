@@ -65,11 +65,18 @@
           <input
             ref="fileInputEl"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             class="d-none"
             @change="handleFileUpload"
           />
         </div>
+
+        <p v-if="uploadError" class="tryon-upload-error small mb-2" role="alert">
+          ⚠️ {{ uploadError }}
+        </p>
+        <p v-else class="small text-muted-custom mb-2">
+          JPG, PNG, or WebP · up to 6 MB
+        </p>
 
         <div class="model-status-indicator mt-2 small">
           <span v-if="modelLoading" class="text-warning">⏳ Loading AI Face Detection model...</span>
@@ -310,6 +317,9 @@ const props = defineProps({
 
 // View modes: 'landing' (3 options), 'live-mirror', 'camera-capture', 'photo-result'
 const viewMode = ref('landing');
+
+// Why the last upload was rejected, shown under the landing buttons.
+const uploadError = ref('');
 
 // Establish catalog list and default selected frame
 const catalogFrames = ref(
@@ -688,18 +698,24 @@ const aiLoading = ref(false);
 const aiSource = ref('fallback');
 let aiDebounceTimer = null;
 
+// These must stay in step with public/js/lens-tint-palette.js: the label chosen
+// here travels to the server as the lens option on saved try-ons and style
+// suggestions, and resolveLensTint only recognises the labels below. A local
+// invention (Ocean Blue, Rose Gold, ...) normalises to "Clear Lens", silently
+// discarding the tint the customer previewed. LensTintSwatches.vue on the frame
+// details page carries the same five.
 const availableTints = [
-  { id: 'none', name: 'Clear Standard', colorHex: 'rgba(255,255,255,0.08)', tintHex: 'transparent', icon: '⚪' },
-  { id: 'smoke-grey', name: 'Smoke Grey', colorHex: 'rgba(40,40,40,0.85)', tintHex: 'rgba(30,30,30,0.45)', icon: '🕶️' },
-  { id: 'ocean-blue', name: 'Ocean Blue', colorHex: 'rgba(30,120,255,0.8)', tintHex: 'rgba(14,165,233,0.3)', icon: '🌊' },
-  { id: 'rose-gold', name: 'Rose Gold', colorHex: 'rgba(230,120,150,0.8)', tintHex: 'rgba(244,114,182,0.3)', icon: '🌸' },
-  { id: 'amber-gold', name: 'Amber Gold', colorHex: 'rgba(217,119,6,0.85)', tintHex: 'rgba(245,158,11,0.35)', icon: '☀️' }
+  { id: 'clear', name: 'Clear Lens', colorHex: 'rgba(255,255,255,0.08)', tintHex: 'transparent', icon: '⚪' },
+  { id: 'blue-light', name: 'Blue-Light Lens', colorHex: 'rgba(135,196,222,0.55)', tintHex: 'rgba(135,196,222,0.09)', icon: '💻' },
+  { id: 'gray', name: 'Gray Tint', colorHex: 'rgba(65,69,74,0.88)', tintHex: 'rgba(65,69,74,0.38)', icon: '🕶️' },
+  { id: 'brown', name: 'Brown Tint', colorHex: 'rgba(109,74,43,0.90)', tintHex: 'rgba(109,74,43,0.40)', icon: '🟤' },
+  { id: 'sunglass', name: 'Sunglass Tint', colorHex: 'rgba(18,22,26,0.98)', tintHex: 'rgba(18,22,26,0.72)', icon: '☀️' }
 ];
-const activeTintId = ref('none');
+const activeTintId = ref('clear');
 
 const activeTintName = computed(() => {
   const t = availableTints.find(item => item.id === activeTintId.value);
-  return t ? t.name : 'Clear Standard';
+  return t ? t.name : 'Clear Lens';
 });
 
 const recommendedStyles = computed(() => {
@@ -1247,11 +1263,58 @@ function triggerFileInput() {
   }
 }
 
+// accept="image/*" on the input is only a hint for the file picker — the
+// customer can switch it to "All files", and it says nothing about size. A
+// captured photo is base64'd into the try-on workspace and posted to the
+// server on save, where bodyParser caps the body at 10mb, so an oversized
+// pick has to be refused here rather than failing later.
+// 6MB keeps the base64 form (about 4/3 the byte size) clear of the server's
+// 10mb JSON body limit once the finished look is posted back on save.
+const ACCEPTED_UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+
+function describeFileSize(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function validateUploadedImage(file) {
+  const type = (file.type || '').toLowerCase();
+
+  if (!type.startsWith('image/')) {
+    return `"${file.name}" is not an image. Choose a JPG, PNG, or WebP photo.`;
+  }
+  if (!ACCEPTED_UPLOAD_TYPES.includes(type)) {
+    return `${type.replace('image/', '').toUpperCase()} images are not supported here. Choose a JPG, PNG, or WebP photo.`;
+  }
+  if (file.size === 0) {
+    return `"${file.name}" is empty. Choose a different photo.`;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `That photo is ${describeFileSize(file.size)}. Please choose one under ${describeFileSize(MAX_UPLOAD_BYTES)}.`;
+  }
+  return null;
+}
+
 function handleFileUpload(e) {
-  const file = e.target.files && e.target.files[0];
+  const input = e.target;
+  const file = input.files && input.files[0];
+  uploadError.value = '';
   if (!file) return;
 
+  const problem = validateUploadedImage(file);
+  if (problem) {
+    uploadError.value = problem;
+    // Clear the input so picking the same file again still fires a change.
+    input.value = '';
+    return;
+  }
+
   const reader = new FileReader();
+  reader.onerror = () => {
+    uploadError.value = 'That photo could not be read. Please try another file.';
+    input.value = '';
+  };
   reader.onload = (event) => {
     cachedPhotoLandmarks = null;
     capturedImageSrc.value = event.target.result;
@@ -1261,6 +1324,7 @@ function handleFileUpload(e) {
     setTimeout(() => {
       renderPhotoOverlay();
     }, 60);
+    input.value = '';
   };
   reader.readAsDataURL(file);
 }
@@ -1441,6 +1505,16 @@ onBeforeUnmount(() => {
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+
+.tryon-upload-error {
+  max-width: 460px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  line-height: 1.45;
 }
 
 .tryon-video-feed {
