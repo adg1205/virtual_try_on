@@ -88,15 +88,21 @@ exports.renderFrameDetails = async (req, res) => {
         if (!frame) {
             return res.status(404).render('error/404', { title: 'Frame Not Found', user: req.user });
         }
-        const [wishlistIds, similarFrames, reviews, reviewStats, userReview] = await Promise.all([
+        // submitReview rejects customers who have not tried on or ordered the
+        // frame, so the page has to ask the same question up front. Otherwise
+        // the form invites a review it will refuse on submit.
+        const [wishlistIds, similarFrames, reviews, reviewStats, userReview, hasTriedOrOrdered] = await Promise.all([
             db.getUserWishlistIds(req.user.id),
             db.getSimilarFrames(frame.id, 4),
             db.getFrameReviews(frame.id, 5, 0),
             db.getFrameReviewStats(frame.id),
-            db.getUserReviewForFrame(req.user.id, frame.id)
+            db.getUserReviewForFrame(req.user.id, frame.id),
+            db.checkReviewEligibility(req.user.id, frame.id)
         ]);
         const isWishlisted = wishlistIds.includes(frame.id);
-        const isEligibleToReview = true;
+        // An existing review keeps its own edit and delete controls reachable
+        // even if the try-on that earned it was since cleared from history.
+        const isEligibleToReview = hasTriedOrOrdered || Boolean(userReview);
         res.render('customer/frame-details', { 
             title: frame.name, 
             user: req.user, 
