@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_change_in_production';
+const configuredJwtSecret = process.env.JWT_SECRET?.trim();
+const isProductionRuntime = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+if (isProductionRuntime && (!configuredJwtSecret || configuredJwtSecret === 'your_super_secret_jwt_key_here')) {
+    throw new Error('A strong JWT_SECRET environment variable is required in production.');
+}
+const JWT_SECRET = configuredJwtSecret || 'super_secret_key_change_in_production';
 
 exports.verifyToken = (req, res, next) => {
     const token = req.cookies.jwt;

@@ -1331,10 +1331,10 @@ function triggerFileInput() {
 // captured photo is base64'd into the try-on workspace and posted to the
 // server on save, where bodyParser caps the body at 10mb, so an oversized
 // pick has to be refused here rather than failing later.
-// 6MB keeps the base64 form (about 4/3 the byte size) clear of the server's
-// 10mb JSON body limit once the finished look is posted back on save.
+// Keep the base64 form (about 4/3 the byte size) below Vercel's request limit
+// once the finished look and overlay settings are posted back on save.
 const ACCEPTED_UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 function describeFileSize(bytes) {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -1401,10 +1401,14 @@ async function renderPhotoOverlay() {
   img.crossOrigin = 'anonymous';
 
   img.onload = async () => {
-    canvas.width = img.naturalWidth || 640;
-    canvas.height = img.naturalHeight || 480;
+    const sourceWidth = img.naturalWidth || 640;
+    const sourceHeight = img.naturalHeight || 480;
+    const maximumDimension = 1600;
+    const renderScale = Math.min(1, maximumDimension / Math.max(sourceWidth, sourceHeight));
+    canvas.width = Math.round(sourceWidth * renderScale);
+    canvas.height = Math.round(sourceHeight * renderScale);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     if (!faceLandmarkerInstance) {
       await initFaceLandmarker();
@@ -1416,7 +1420,7 @@ async function renderPhotoOverlay() {
         offCanvas.width = canvas.width;
         offCanvas.height = canvas.height;
         const offCtx = offCanvas.getContext('2d');
-        offCtx.drawImage(img, 0, 0);
+        offCtx.drawImage(img, 0, 0, offCanvas.width, offCanvas.height);
 
         const results = faceLandmarkerInstance.detectForVideo(offCanvas, performance.now());
         if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
@@ -1478,7 +1482,7 @@ async function saveSnapshotToHistory() {
   isSaving.value = true;
   try {
     const finalData = photoCanvasEl.value
-      ? photoCanvasEl.value.toDataURL('image/jpeg', 0.92)
+      ? photoCanvasEl.value.toDataURL('image/jpeg', 0.85)
       : capturedImageSrc.value;
 
     const res = await fetch('/customer/tryon-history/save', {

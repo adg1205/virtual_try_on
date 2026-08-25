@@ -38,6 +38,31 @@ async function uploadImage(base64DataUri) {
     }
 }
 
+async function uploadProfileImage(buffer, mimeType) {
+    if (!isConfigured()) {
+        throw new Error('Cloudinary is not configured for profile uploads.');
+    }
+    if (!Buffer.isBuffer(buffer) || !buffer.length) {
+        throw new Error('A valid profile image buffer is required.');
+    }
+
+    const dataUri = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    const result = await cloudinary.uploader.upload(dataUri, {
+        folder: 'profile-photos',
+        resource_type: 'image',
+        overwrite: false,
+        unique_filename: true,
+        transformation: [
+            { width: 800, height: 800, crop: 'limit' },
+            { quality: 'auto', fetch_format: 'auto' }
+        ]
+    });
+    return {
+        secure_url: result.secure_url,
+        public_id: result.public_id
+    };
+}
+
 /**
  * Deletes an image from Cloudinary using its public_id
  * @param {string} publicId - Cloudinary public ID of the resource
@@ -57,5 +82,6 @@ async function deleteImage(publicId) {
 module.exports = {
     isConfigured,
     uploadImage,
+    uploadProfileImage,
     deleteImage
 };

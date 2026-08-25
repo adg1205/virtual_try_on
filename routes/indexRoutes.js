@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
 
 const pageController = require('../controllers/pageController');
 const catalogController = require('../controllers/catalogController');
@@ -12,17 +11,27 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const adminRoutes = require('./adminRoutes');
 const customerRoutes = require('./customerRoutes');
 
-// Multer Config
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'public/uploads/profiles/');
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+// Keep uploads in memory until Cloudinary stores them. Vercel functions do not
+// provide durable local filesystem storage.
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, callback) => {
+        const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+        const isSupported = supportedTypes.has(file.mimetype);
+        callback(isSupported ? null : new Error('Profile photo must be JPEG, PNG, or WebP.'), isSupported);
     }
 });
-const upload = multer({ storage: storage });
+
+function acceptProfileUpload(req, res, next) {
+    upload.single('profile_photo')(req, res, error => {
+        if (!error) return next();
+        const message = error.code === 'LIMIT_FILE_SIZE'
+            ? 'Profile photo must be 2 MB or smaller.'
+            : error.message;
+        return res.status(400).send(message);
+    });
+}
 
 // Public Routes
 router.get('/', pageController.renderHome);
@@ -37,7 +46,7 @@ router.get('/forgot-password', pageController.renderForgotPassword);
 router.get('/reset-password/:token', pageController.renderResetPassword);
 
 // Auth Actions (POST/GET)
-router.post('/signup', upload.single('profile_photo'), authController.registerUser);
+router.post('/signup', acceptProfileUpload, authController.registerUser);
 router.post('/login', authController.loginUser);
 router.get('/logout', authController.logoutUser);
 router.get('/verify-email/:token', authController.verifyEmail);

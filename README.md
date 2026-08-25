@@ -1,6 +1,6 @@
 # Virtual Try-On Eyewear Store
 
-A Node.js, Express, SQLite, EJS, and Vue application for browsing eyewear, trying frames on with MediaPipe face landmarks, and receiving Gemini-powered styling guidance.
+A Node.js, Express, EJS, and Vue application for browsing eyewear, trying frames on with MediaPipe face landmarks, and receiving Gemini-powered styling guidance. It uses SQLite for local development and Turso/libSQL for persistent Vercel deployments.
 
 ## AI styling features
 
@@ -63,6 +63,12 @@ npm start
 
 Open `http://localhost:3000`. SQLite tables and starter frame records are created automatically on first start.
 
+## Deploy to Vercel
+
+The repository is configured for Vercel's Express support. Production requires a Turso database because a Vercel Function's local filesystem is ephemeral. Profile photos and saved try-on images are stored in Cloudinary instead of the deployment filesystem.
+
+See [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md) for the import steps, required environment variables, Turso setup, and post-deployment checks.
+
 ## Relevant endpoints
 
 ### Recommend frames for a detected face shape
@@ -114,7 +120,9 @@ Both routes are mounted under the authenticated customer router.
 client/src/components/AiRecommendations/  Face analysis and recommendation UI
 client/src/components/VirtualTryOn/       Try-on and selected-style explanation UI
 controllers/customerController.js         HTTP handlers and catalog lookup
+models/LibsqlCallbackDatabase.js           Turso adapter for existing database queries
 utils/geminiStylistService.js              Gemini prompts, validation, and fallbacks
+utils/baseUrl.js                           Vercel-aware absolute callback URLs
 utils/cartService.js                       Cart validation, totals, and checkout normalization
 utils/paymentService.js                    Stripe/SSLCommerz verification and normalized payment records
 test/geminiStylistService.test.js          Unit tests with mocked Gemini responses

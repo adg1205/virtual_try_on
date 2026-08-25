@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { resolveBaseUrl } = require('./baseUrl');
 
 // Configure with real SMTP settings from environment variables
 const transporter = nodemailer.createTransport({
@@ -32,7 +33,7 @@ function formatDhakaDate(value = new Date()) {
 }
 
 exports.sendVerificationEmail = async (email, token) => {
-    const verificationUrl = `http://localhost:3000/verify-email/${token}`;
+    const verificationUrl = `${resolveBaseUrl()}/verify-email/${token}`;
     const message = {
         from: `"Virtual Try-On" <${process.env.SMTP_USER}>`,
         to: email,
@@ -59,7 +60,7 @@ exports.sendVerificationEmail = async (email, token) => {
 };
 
 exports.sendPasswordResetEmail = async (email, token) => {
-    const resetUrl = `http://localhost:3000/reset-password/${token}`;
+    const resetUrl = `${resolveBaseUrl()}/reset-password/${token}`;
     const message = {
         from: `"Virtual Try-On" <${process.env.SMTP_USER}>`,
         to: email,
@@ -93,7 +94,7 @@ exports.sendOrderConfirmationEmail = async (order, user, mailTransport = transpo
         return false;
     }
 
-    const baseUrl = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const baseUrl = resolveBaseUrl();
     const trackingUrl = `${baseUrl}/customer/order-tracking/${order.id}`;
     
     // Payment method mapping

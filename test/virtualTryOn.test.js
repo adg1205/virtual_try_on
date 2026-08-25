@@ -126,8 +126,8 @@ test('uploaded photos are checked for type and size', () => {
 
     // The limit must stay under the server's JSON body cap, since the captured
     // image is posted back as base64 (roughly 4/3 the byte size) on save.
-    const bodyLimitBytes = 10 * 1024 * 1024;
-    assert.ok(MAX_UPLOAD_BYTES * 1.37 < bodyLimitBytes, 'base64 of a max-size upload must fit the 10mb body limit');
+    const bodyLimitBytes = 4 * 1024 * 1024;
+    assert.ok(MAX_UPLOAD_BYTES * 1.37 < bodyLimitBytes, 'base64 of a max-size upload must fit the Vercel-safe 4mb body limit');
 
     // And the file input should not advertise types the validator rejects.
     assert.match(componentSource, /accept="image\/jpeg,image\/png,image\/webp"/);

@@ -26,6 +26,7 @@ const {
     normalizeCheckoutDetails,
     createOrderNumber
 } = require('../utils/cartService');
+const { resolveBaseUrl } = require('../utils/baseUrl');
 
 
 exports.renderDashboard = async (req, res) => {
@@ -553,9 +554,7 @@ exports.placeOrder = async (req, res) => {
 
         const { subtotal, deliveryCharge, totalAmount } = calculateCartSummary(cartItems);
 
-        const protocol = req.protocol || 'http';
-        const host = req.get('host') || 'localhost:3000';
-        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+        const baseUrl = resolveBaseUrl(req);
 
         // 1. CASH ON DELIVERY (COD) FLOW
         if (method === 'cod') {

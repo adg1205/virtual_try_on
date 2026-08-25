@@ -1,0 +1,8 @@
+.env
+.env.*
+database.sqlite
+database.sqlite-*
+scratch
+coverage
+client/node_modules
+node_modules

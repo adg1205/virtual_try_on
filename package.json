@@ -6,15 +6,20 @@
   "scripts": {
     "test": "node --test",
     "start": "node app.js",
+    "postinstall": "npm --prefix client ci",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
-    "build": "npm --prefix client run build"
+    "build": "npm run client:build && node scripts/prepare-public-assets.js"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@tursodatabase/serverless": "^1.4.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.3.0",
     "bootstrap": "^5.3.8",

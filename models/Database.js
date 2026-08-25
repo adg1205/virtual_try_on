@@ -1,6 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { createClient } = require('@tursodatabase/serverless/compat');
+const { LibsqlCallbackDatabase, normalizeValue } = require('./LibsqlCallbackDatabase');
 
 const configuredDbPath = process.env.DB_PATH?.trim();
 const dbPath = configuredDbPath
@@ -8,7 +10,26 @@ const dbPath = configuredDbPath
         ? configuredDbPath
         : path.resolve(__dirname, '..', configuredDbPath))
     : path.join(__dirname, '..', 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
+const tursoDatabaseUrl = process.env.TURSO_DATABASE_URL?.trim();
+const tursoAuthToken = process.env.TURSO_AUTH_TOKEN?.trim();
+const usesTurso = Boolean(tursoDatabaseUrl);
+const tursoClient = usesTurso
+    ? createClient({
+        url: tursoDatabaseUrl,
+        authToken: tursoAuthToken || undefined
+    })
+    : null;
+
+if (process.env.VERCEL && !usesTurso) {
+    throw new Error('TURSO_DATABASE_URL is required on Vercel because local SQLite storage is not persistent.');
+}
+if (process.env.VERCEL && !tursoAuthToken) {
+    throw new Error('TURSO_AUTH_TOKEN is required on Vercel to authenticate database requests.');
+}
+
+const db = usesTurso
+    ? new LibsqlCallbackDatabase(tursoClient)
+    : new sqlite3.Database(dbPath);
 
 function closeDatabase() {
     return new Promise((resolve, reject) => {
@@ -128,17 +149,17 @@ function initializeDatabase() {
             db.get("SELECT COUNT(*) AS count FROM frames", (err, row) => {
                 if (err) return reject(err);
                 if (row.count === 0) {
-                    const insert = db.prepare(`INSERT INTO frames (name, brand, price, image_url, shape, color, material, size, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-                    insert.run("Classic Aviator", "Ray-Ban", 150.00, "/images/frames/aviator.png", "Aviator", "Gold", "Metal", "Large", 1);
-                    insert.run("Wayfarer Classic", "Ray-Ban", 160.00, "/images/frames/wayfarer.png", "Rectangular", "Black", "Acetate", "Medium", 1);
-                    insert.run("Round Metal", "Oakley", 140.00, "/images/frames/round.png", "Round", "Silver", "Metal", "Small", 1);
-                    insert.run("Clubmaster", "Gucci", 250.00, "/images/frames/clubmaster.png", "Browline", "Tortoise", "Acetate", "Medium", 1);
-                    insert.run("Titan Slim", "Titan", 95.00, "/images/frames/titan.png", "Rectangular", "Gunmetal", "Titanium", "Medium", 1);
-                    insert.run("Cat Eye Luxe", "Prada", 310.00, "/images/frames/cateye.png", "Cat Eye", "Rose Gold", "Metal", "Medium", 0);
-                    insert.run("Geometric Bold", "Versace", 275.00, "/images/frames/geometric.png", "Geometric", "Black", "Acetate", "Large", 1);
-                    insert.run("Oval Vintage", "Persol", 195.00, "/images/frames/oval.png", "Oval", "Honey Brown", "Acetate", "Small", 1);
-                    insert.run("Sport Wrap", "Oakley", 120.00, "/images/frames/sport.png", "Wrap", "Matte Black", "Nylon", "Large", 1);
-                    insert.run("Square Minimalist", "Warby Parker", 85.00, "/images/frames/square.png", "Square", "Crystal Clear", "Acetate", "Medium", 0);
+                    const insert = db.prepare(`INSERT OR IGNORE INTO frames (id, name, brand, price, image_url, shape, color, material, size, availability) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    insert.run(1, "Classic Aviator", "Ray-Ban", 150.00, "/images/frames/aviator.png", "Aviator", "Gold", "Metal", "Large", 1);
+                    insert.run(2, "Wayfarer Classic", "Ray-Ban", 160.00, "/images/frames/wayfarer.png", "Rectangular", "Black", "Acetate", "Medium", 1);
+                    insert.run(3, "Round Metal", "Oakley", 140.00, "/images/frames/round.png", "Round", "Silver", "Metal", "Small", 1);
+                    insert.run(4, "Clubmaster", "Gucci", 250.00, "/images/frames/clubmaster.png", "Browline", "Tortoise", "Acetate", "Medium", 1);
+                    insert.run(5, "Titan Slim", "Titan", 95.00, "/images/frames/titan.png", "Rectangular", "Gunmetal", "Titanium", "Medium", 1);
+                    insert.run(6, "Cat Eye Luxe", "Prada", 310.00, "/images/frames/cateye.png", "Cat Eye", "Rose Gold", "Metal", "Medium", 0);
+                    insert.run(7, "Geometric Bold", "Versace", 275.00, "/images/frames/geometric.png", "Geometric", "Black", "Acetate", "Large", 1);
+                    insert.run(8, "Oval Vintage", "Persol", 195.00, "/images/frames/oval.png", "Oval", "Honey Brown", "Acetate", "Small", 1);
+                    insert.run(9, "Sport Wrap", "Oakley", 120.00, "/images/frames/sport.png", "Wrap", "Matte Black", "Nylon", "Large", 1);
+                    insert.run(10, "Square Minimalist", "Warby Parker", 85.00, "/images/frames/square.png", "Square", "Crystal Clear", "Acetate", "Medium", 0);
                     insert.finalize((insertErr) => {
                         if (insertErr) return reject(insertErr);
                         framesReady = true;
@@ -156,7 +177,7 @@ function initializeDatabase() {
                 if (row.count === 0) {
                     const salt = await bcrypt.genSalt(10);
                     const hashedAdminPassword = await bcrypt.hash('admin123', salt);
-                    db.run(`INSERT INTO users (full_name, email, password, phone_number, role, is_verified) VALUES (?, ?, ?, ?, ?, ?)`,
+                    db.run(`INSERT OR IGNORE INTO users (full_name, email, password, phone_number, role, is_verified) VALUES (?, ?, ?, ?, ?, ?)`,
                         ['System Admin', 'admin@example.com', hashedAdminPassword, '0000000000', 'admin', 1]
                     );
                 }
@@ -945,7 +966,102 @@ function createOrderItems(orderId, items) {
  * gateway payment, and clears the cart as one SQLite transaction. A failure at
  * any point rolls back the complete checkout.
  */
+async function createTursoOrderTransaction(orderData, items, paymentData = null) {
+    const transaction = await tursoClient.transaction('write');
+    try {
+        const orderResult = await transaction.execute({
+            sql: `
+                INSERT INTO orders (
+                    user_id, order_number, delivery_address, contact_number,
+                    order_note, payment_method, subtotal, delivery_charge,
+                    total_amount, status, payment_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id
+            `,
+            args: [
+                orderData.userId,
+                orderData.orderNumber,
+                orderData.deliveryAddress,
+                orderData.contactNumber,
+                orderData.orderNote || null,
+                orderData.paymentMethod,
+                orderData.subtotal,
+                orderData.deliveryCharge,
+                orderData.totalAmount,
+                orderData.status || 'Placed',
+                orderData.paymentStatus || 'unpaid'
+            ]
+        });
+        const orderId = normalizeValue(orderResult.rows[0]?.id ?? orderResult.lastInsertRowid);
+        if (!orderId) throw new Error('Turso did not return the new order ID');
+
+        const statements = items.map(item => ({
+            sql: `
+                INSERT INTO order_items (
+                    order_id, frame_id, frame_name, brand, image_url,
+                    lens_option, selected_variant, quantity, unit_price, line_total
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+                orderId,
+                item.frame_id,
+                item.frame_name,
+                item.brand,
+                item.frame_catalog_image || item.image_url,
+                item.lens_option,
+                item.selected_variant,
+                item.quantity,
+                item.price,
+                Number(item.price) * Number(item.quantity)
+            ]
+        }));
+
+        if (paymentData) {
+            statements.push({
+                sql: `
+                    INSERT INTO payments (
+                        order_id, transaction_id, payment_method,
+                        payment_gateway, amount, currency, status,
+                        gateway_response, paid_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `,
+                args: [
+                    orderId,
+                    paymentData.transactionId,
+                    paymentData.paymentMethod,
+                    paymentData.paymentGateway,
+                    paymentData.amount,
+                    paymentData.currency || 'BDT',
+                    paymentData.status || 'completed',
+                    paymentData.gatewayResponse || null,
+                    paymentData.paidAt || new Date().toISOString()
+                ]
+            });
+        }
+        statements.push({
+            sql: 'DELETE FROM cart WHERE user_id = ?',
+            args: [orderData.userId]
+        });
+
+        await transaction.batch(statements);
+        await transaction.commit();
+        return orderId;
+    } catch (error) {
+        if (!transaction.closed) await transaction.rollback();
+        throw error;
+    } finally {
+        if (!transaction.closed) transaction.close();
+    }
+}
+
 function createOrderTransaction(orderData, items, paymentData = null) {
+    if (usesTurso) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return Promise.reject(new Error('Cannot create an order from an empty cart'));
+        }
+        return createTursoOrderTransaction(orderData, items, paymentData);
+    }
+
     return new Promise((resolve, reject) => {
         if (!Array.isArray(items) || items.length === 0) {
             return reject(new Error('Cannot create an order from an empty cart'));

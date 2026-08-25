@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const emailService = require('../utils/emailService');
+const cloudinaryService = require('../utils/cloudinaryService');
 const { JWT_SECRET } = require('../middleware/authMiddleware');
 
 exports.registerUser = async (req, res) => {
@@ -11,7 +12,8 @@ exports.registerUser = async (req, res) => {
         
         let profile_photo = null;
         if (req.file) {
-            profile_photo = '/uploads/profiles/' + req.file.filename;
+            const uploadResult = await cloudinaryService.uploadProfileImage(req.file.buffer, req.file.mimetype);
+            profile_photo = uploadResult.secure_url;
         }
 
         if (!full_name || !email || !password || !phone_number) {
@@ -87,6 +89,8 @@ exports.loginUser = async (req, res) => {
         // Set cookie
         res.cookie('jwt', token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
+            sameSite: 'lax',
             maxAge: 3600000 // 1 hour
         });
 

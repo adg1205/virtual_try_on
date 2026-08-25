@@ -1,4 +1,4 @@
-const MAX_IMAGE_DATA_LENGTH = 9 * 1024 * 1024;
+const MAX_IMAGE_DATA_LENGTH = Math.floor(3.75 * 1024 * 1024);
 
 function clampNumber(value, fallback, minimum, maximum) {
     const parsed = Number(value);

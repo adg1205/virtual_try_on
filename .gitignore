@@ -8,6 +8,7 @@
 node_modules/
 client/node_modules/
 public/dist/
+public/vendor/bootstrap/
 client/dist/
 coverage/
 
