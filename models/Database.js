@@ -288,6 +288,13 @@ function initializeDatabase() {
                 if (err) return reject(err);
             });
 
+            // Prevent duplicate orders when a gateway sends both a browser
+            // success callback and an IPN for the same transaction.
+            db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_transaction_id
+                    ON payments(transaction_id)`, (err) => {
+                if (err) return reject(err);
+            });
+
             // Create Frame Comparisons table
             db.run(`
                 CREATE TABLE IF NOT EXISTS frame_comparisons (
@@ -873,11 +880,11 @@ function createOrderItems(orderId, items) {
 }
 
 /**
- * Creates a COD order, snapshots every cart line, and clears the customer's
- * cart as one SQLite transaction. A failure at any point rolls back all three
- * operations so customers never receive a partial order.
+ * Creates an order, snapshots every cart line, optionally stores a verified
+ * gateway payment, and clears the cart as one SQLite transaction. A failure at
+ * any point rolls back the complete checkout.
  */
-function createOrderFromCart(orderData, items) {
+function createOrderTransaction(orderData, items, paymentData = null) {
     return new Promise((resolve, reject) => {
         if (!Array.isArray(items) || items.length === 0) {
             return reject(new Error('Cannot create an order from an empty cart'));
@@ -955,23 +962,62 @@ function createOrderFromCart(orderData, items) {
                             return rollback(itemError || finalizeError);
                         }
 
-                        transactionDb.run('DELETE FROM cart WHERE user_id = ?', [orderData.userId], (clearError) => {
-                            if (clearError) return rollback(clearError);
+                        const clearCartAndCommit = () => {
+                            transactionDb.run('DELETE FROM cart WHERE user_id = ?', [orderData.userId], (clearError) => {
+                                if (clearError) return rollback(clearError);
 
-                            transactionDb.run('COMMIT', (commitError) => {
-                                if (commitError) return rollback(commitError);
-                                settled = true;
-                                transactionDb.close((closeError) => {
-                                    if (closeError) return reject(closeError);
-                                    resolve(orderId);
+                                transactionDb.run('COMMIT', (commitError) => {
+                                    if (commitError) return rollback(commitError);
+                                    settled = true;
+                                    transactionDb.close((closeError) => {
+                                        if (closeError) return reject(closeError);
+                                        resolve(orderId);
+                                    });
                                 });
                             });
+                        };
+
+                        if (!paymentData) {
+                            return clearCartAndCommit();
+                        }
+
+                        const paymentSql = `
+                            INSERT INTO payments (
+                                order_id, transaction_id, payment_method,
+                                payment_gateway, amount, currency, status,
+                                gateway_response, paid_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `;
+                        transactionDb.run(paymentSql, [
+                            orderId,
+                            paymentData.transactionId,
+                            paymentData.paymentMethod,
+                            paymentData.paymentGateway,
+                            paymentData.amount,
+                            paymentData.currency || 'BDT',
+                            paymentData.status || 'completed',
+                            paymentData.gatewayResponse || null,
+                            paymentData.paidAt || new Date().toISOString()
+                        ], (paymentError) => {
+                            if (paymentError) return rollback(paymentError);
+                            clearCartAndCommit();
                         });
                     });
                 });
             });
         });
     });
+}
+
+function createOrderFromCart(orderData, items) {
+    return createOrderTransaction(orderData, items);
+}
+
+function createPaidOrderFromCart(orderData, items, paymentData) {
+    if (!paymentData || !paymentData.transactionId) {
+        return Promise.reject(new Error('A verified gateway payment is required'));
+    }
+    return createOrderTransaction(orderData, items, paymentData);
 }
 
 function getUserOrders(userId) {
@@ -1614,6 +1660,7 @@ module.exports = {
     createOrder,
     createOrderItems,
     createOrderFromCart,
+    createPaidOrderFromCart,
     getUserOrders,
     getUserOrderCount,
     getOrderById,

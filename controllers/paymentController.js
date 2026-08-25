@@ -2,310 +2,271 @@ const db = require('../models/Database');
 const stripeService = require('../utils/stripeService');
 const sslcommerzService = require('../utils/sslcommerzService');
 const emailService = require('../utils/emailService');
+const {
+    PaymentValidationError,
+    validateStripeSession,
+    validateSSLCommerzTransaction
+} = require('../utils/paymentService');
+const { calculateCartSummary, createOrderNumber } = require('../utils/cartService');
 
-/**
- * Handle Stripe Payment Success Callback (GET /customer/payment/stripe/success)
- */
+function decodeGatewayValue(value, fallback = null) {
+    if (!value) return fallback;
+    try {
+        return decodeURIComponent(value);
+    } catch (_error) {
+        return value;
+    }
+}
+
+function getStripeTransactionId(session) {
+    if (typeof session?.payment_intent === 'object') return session.payment_intent.id;
+    return session?.payment_intent || session?.id || null;
+}
+
+function getSSLCommerzPaymentMethod(payload, validation = {}) {
+    const source = [
+        validation.value_a,
+        payload.value_a,
+        payload.opt_a,
+        validation.card_type,
+        payload.card_type,
+        payload.card_brand,
+        payload.tran_id
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return source.includes('nagad') ? 'nagad' : 'bkash';
+}
+
+function getSSLCommerzUserId(payload, validation, requestUser) {
+    const explicitValue = validation?.value_b || payload.value_b || payload.opt_b;
+    let userId = Number.parseInt(explicitValue || requestUser?.id || 0, 10);
+
+    if ((!userId || Number.isNaN(userId)) && payload.tran_id?.startsWith('TRAN-')) {
+        userId = Number.parseInt(payload.tran_id.split('-')[2], 10);
+    }
+
+    return Number.isInteger(userId) && userId > 0 ? userId : null;
+}
+
+async function getExistingPayment(transactionIds) {
+    for (const transactionId of new Set(transactionIds.filter(Boolean).map(String))) {
+        const payment = await db.getPaymentByTransactionId(transactionId);
+        if (payment) return payment;
+    }
+    return null;
+}
+
+async function sendConfirmation(order, user, gatewayName) {
+    if (!order || !user?.email) return false;
+    const sent = await emailService.sendOrderConfirmationEmail(order, user);
+    if (!sent) {
+        console.warn(`${gatewayName} payment was recorded, but the confirmation email could not be sent.`);
+    }
+    return sent;
+}
+
+async function persistPaidOrder({ orderData, cartItems, paymentData }) {
+    try {
+        return await db.createPaidOrderFromCart(orderData, cartItems, paymentData);
+    } catch (error) {
+        if (/payments\.transaction_id|unique constraint/i.test(error.message || '')) {
+            const existing = await db.getPaymentByTransactionId(paymentData.transactionId);
+            if (existing) return existing.order_id;
+        }
+        throw error;
+    }
+}
+
+async function completeSSLCommerzPayment(payload, requestUser = null) {
+    const tranId = payload?.tran_id;
+    const validationId = payload?.val_id;
+    if (!tranId || !validationId) {
+        throw new PaymentValidationError('SSLCommerz callback is missing transaction validation data', 'invalid_ssl_response');
+    }
+
+    // Validation is required in both sandbox and live modes. A browser callback
+    // alone is not proof of payment.
+    const validation = await sslcommerzService.validatePayment(validationId);
+    const userId = getSSLCommerzUserId(payload, validation, requestUser);
+    if (!userId) {
+        throw new PaymentValidationError('Customer could not be identified from SSLCommerz metadata', 'user_not_found');
+    }
+
+    const candidateTransactionId = validation.bank_tran_id
+        || payload.bank_tran_id
+        || validation.tran_id
+        || tranId;
+    const existingPayment = await getExistingPayment([candidateTransactionId, tranId]);
+    if (existingPayment) {
+        const [order, user] = await Promise.all([
+            db.getOrderById(existingPayment.order_id, userId),
+            db.getUserById(userId)
+        ]);
+        return { existing: true, order, user, payment: existingPayment };
+    }
+
+    const cartItems = await db.getUserCart(userId);
+    if (!cartItems.length) {
+        throw new PaymentValidationError('The customer cart is empty', 'cart_empty');
+    }
+
+    const summary = calculateCartSummary(cartItems);
+    const paymentMethod = getSSLCommerzPaymentMethod(payload, validation);
+    const paymentData = validateSSLCommerzTransaction(
+        validation,
+        payload,
+        summary.totalAmount,
+        paymentMethod
+    );
+
+    const deliveryAddress = decodeGatewayValue(
+        validation.value_c || payload.value_c || payload.opt_c,
+        validation.cus_add1 || payload.cus_add1 || 'Delivery Address'
+    );
+    const orderNote = decodeGatewayValue(
+        validation.value_d || payload.value_d || payload.opt_d,
+        null
+    );
+
+    const orderId = await persistPaidOrder({
+        orderData: {
+            userId,
+            orderNumber: createOrderNumber(),
+            deliveryAddress,
+            contactNumber: validation.cus_phone || payload.cus_phone || 'N/A',
+            orderNote,
+            paymentMethod,
+            ...summary,
+            status: 'Placed',
+            paymentStatus: 'paid'
+        },
+        cartItems,
+        paymentData
+    });
+
+    const [order, user] = await Promise.all([
+        db.getOrderById(orderId, userId),
+        requestUser?.id === userId ? requestUser : db.getUserById(userId)
+    ]);
+    await sendConfirmation(order, user, 'SSLCommerz');
+
+    return { existing: false, order, user, payment: order.payment };
+}
+
+/** Handle Stripe Payment Success Callback. */
 exports.handleStripeSuccess = async (req, res) => {
     try {
-        const { session_id } = req.query;
-        if (!session_id) {
+        const sessionId = req.query.session_id;
+        if (!sessionId) {
             return res.redirect('/customer/checkout?error=invalid_session');
         }
 
-        const session = await stripeService.retrieveSession(session_id);
-        if (!session || session.payment_status !== 'paid') {
-            return res.redirect('/customer/checkout?error=payment_not_completed');
-        }
-
+        const session = await stripeService.retrieveSession(sessionId);
         const metadata = session.metadata || {};
-        const userId = parseInt(metadata.userId || (req.user ? req.user.id : 0), 10);
+        const userId = Number.parseInt(metadata.userId || req.user?.id || 0, 10);
         if (!userId) {
             return res.redirect('/customer/checkout?error=user_not_found');
         }
 
-        // Get user cart items
-        const cartItems = await db.getUserCart(userId);
-        if (!cartItems || cartItems.length === 0) {
-            // Check if order was already created for this session (idempotency check)
-            const existingPayment = await db.getPaymentByTransactionId(session.payment_intent || session.id);
-            if (existingPayment) {
-                return res.redirect(`/customer/order-tracking/${existingPayment.order_id}?placed=1`);
-            }
-            return res.redirect('/customer/cart?error=cart_empty');
-        }
-
-        // Calculate totals
-        let subtotal = parseFloat(metadata.subtotal);
-        let deliveryCharge = parseFloat(metadata.deliveryCharge);
-        let totalAmount = parseFloat(metadata.totalAmount);
-
-        if (isNaN(subtotal) || isNaN(totalAmount)) {
-            subtotal = 0;
-            cartItems.forEach(item => { subtotal += item.price * item.quantity; });
-            deliveryCharge = subtotal < 200 ? 5.00 : 0;
-            totalAmount = subtotal + deliveryCharge;
-        }
-
-        // Generate Order Number
-        const timestamp = Date.now().toString().slice(-6);
-        const randomCode = Math.floor(1000 + Math.random() * 9000);
-        const orderNumber = `ORD-${timestamp}-${randomCode}`;
-
-        // Create Order in DB
-        const orderId = await db.createOrder({
-            userId,
-            orderNumber,
-            deliveryAddress: metadata.deliveryAddress || 'Address provided at checkout',
-            contactNumber: metadata.contactNumber || 'N/A',
-            orderNote: metadata.orderNote || null,
-            paymentMethod: 'card',
-            subtotal,
-            deliveryCharge,
-            totalAmount,
-            status: 'Placed',
-            paymentStatus: 'paid'
-        });
-
-        // Create Order Items
-        await db.createOrderItems(orderId, cartItems);
-
-        // Record Payment in DB
-        const transactionId = session.payment_intent || session.id;
-        await db.createPayment({
-            orderId,
-            transactionId,
-            paymentMethod: 'card',
-            paymentGateway: 'stripe',
-            amount: totalAmount,
-            currency: 'BDT',
-            status: 'completed',
-            gatewayResponse: JSON.stringify({
-                sessionId: session.id,
-                paymentIntent: session.payment_intent,
-                customerEmail: session.customer_email,
-                paymentStatus: session.payment_status
-            })
-        });
-
-        // Clear user cart
-        await db.clearCart(userId);
-
-        // Fetch user & order for confirmation email
-        const userObj = (req.user && req.user.id === userId) ? req.user : await db.getUserById(userId);
-        const order = await db.getOrderById(orderId, userId);
-
-        if (order && userObj) {
-            console.log(`Sending order confirmation email to ${userObj.email} for order #${order.order_number}...`);
-            await emailService.sendOrderConfirmationEmail(order, userObj).catch(err => {
-                console.error("Email send error during Stripe checkout:", err);
-            });
-        }
-
-        res.render('customer/payment-success', {
-            title: 'Payment Successful',
-            user: userObj || req.user,
-            currentPage: 'checkout',
-            order,
-            transactionId,
-            amount: totalAmount,
-            paymentMethod: 'Credit / Debit Card (Stripe)'
-        });
-    } catch (err) {
-        console.error("Stripe payment success error:", err);
-        res.redirect('/customer/checkout?error=payment_verification_failed');
-    }
-};
-
-/**
- * Handle Stripe Payment Cancel Callback (GET /customer/payment/stripe/cancel)
- */
-exports.handleStripeCancel = (req, res) => {
-    res.redirect('/customer/checkout?payment_status=cancelled&gateway=stripe');
-};
-
-exports.handleSSLCommerzSuccess = async (req, res) => {
-    try {
-        const payload = req.body || {};
-        console.log("Received SSLCommerz Success Callback Payload:", payload);
-
-        const tran_id = payload.tran_id;
-        const val_id = payload.val_id || payload.tran_id;
-        const amount = payload.amount || payload.store_amount;
-
-        // SSLCommerz returns custom parameters as value_a, value_b, value_c, value_d
-        const opt_a = payload.value_a || payload.opt_a;
-        const opt_b = payload.value_b || payload.opt_b;
-        const opt_c = payload.value_c || payload.opt_c;
-        const opt_d = payload.value_d || payload.opt_d;
-
-        if (!tran_id) {
-            return res.redirect('/customer/checkout?error=invalid_ssl_response');
-        }
-
-        // Determine userId from value_b, req.user, or by parsing tran_id (FORMAT: TRAN-timestamp-userId)
-        let userId = parseInt(opt_b || (req.user ? req.user.id : 0), 10);
-        if ((!userId || isNaN(userId)) && tran_id && tran_id.startsWith('TRAN-')) {
-            const parts = tran_id.split('-');
-            if (parts.length >= 3) {
-                userId = parseInt(parts[2], 10);
-            }
-        }
-
-        if (!userId || isNaN(userId)) {
-            console.error("SSLCommerz Error: Could not determine userId from callback payload", payload);
-            return res.redirect('/customer/checkout?error=user_not_found');
-        }
-
-        // Validate transaction with SSLCommerz if not in default sandbox
-        if (val_id && process.env.SSLCOMMERZ_STORE_ID !== 'testbox') {
-            try {
-                const validationResponse = await sslcommerzService.validatePayment(val_id);
-                if (validationResponse && validationResponse.status !== 'VALID' && validationResponse.status !== 'VALIDATED') {
-                    console.warn("SSLCommerz validation status:", validationResponse.status);
-                }
-            } catch (vErr) {
-                console.warn("SSLCommerz validation check notice:", vErr.message);
-            }
-        }
-
-        // Check idempotency (if order for this transaction ID was already created)
-        const existingPayment = await db.getPaymentByTransactionId(val_id || tran_id);
+        const transactionId = getStripeTransactionId(session);
+        const existingPayment = await getExistingPayment([transactionId, session.id]);
         if (existingPayment) {
             return res.redirect(`/customer/order-tracking/${existingPayment.order_id}?placed=1`);
         }
 
-        // Fetch user cart
         const cartItems = await db.getUserCart(userId);
-        if (!cartItems || cartItems.length === 0) {
-            console.warn(`User #${userId} cart is empty during SSLCommerz callback.`);
-            return res.redirect('/customer/my-orders');
+        if (!cartItems.length) {
+            return res.redirect('/customer/cart?error=cart_empty');
         }
 
-        // Calculate totals
-        let subtotal = 0;
-        cartItems.forEach(item => { subtotal += item.price * item.quantity; });
-        const deliveryCharge = subtotal < 200 ? 5.00 : 0;
-        const totalAmount = parseFloat(amount) || (subtotal + deliveryCharge);
-
-        // Determine paymentMethod (bKash vs Nagad) reliably from opt_a, card_type, card_brand, or tran_id
-        let paymentMethod = 'bkash';
-        const searchTarget = `${opt_a || ''} ${payload.card_type || ''} ${payload.card_brand || ''} ${tran_id || ''}`.toLowerCase();
-        if (searchTarget.includes('nagad')) {
-            paymentMethod = 'nagad';
-        } else if (searchTarget.includes('bkash')) {
-            paymentMethod = 'bkash';
-        }
-        
-        let deliveryAddress = 'Delivery Address';
-        if (opt_c) {
-            try { deliveryAddress = decodeURIComponent(opt_c); } catch (e) { deliveryAddress = opt_c; }
-        } else if (payload.cus_add1) {
-            deliveryAddress = payload.cus_add1;
-        }
-
-        let orderNote = null;
-        if (opt_d) {
-            try { orderNote = decodeURIComponent(opt_d); } catch (e) { orderNote = opt_d; }
-        }
-
-        // Generate Order Number
-        const timestamp = Date.now().toString().slice(-6);
-        const randomCode = Math.floor(1000 + Math.random() * 9000);
-        const orderNumber = `ORD-${timestamp}-${randomCode}`;
-
-        const contactNumber = payload.cus_phone || 'N/A';
-
-        // Create Order in DB
-        const orderId = await db.createOrder({
-            userId,
-            orderNumber,
-            deliveryAddress,
-            contactNumber,
-            orderNote,
-            paymentMethod,
-            subtotal,
-            deliveryCharge,
-            totalAmount,
-            status: 'Placed',
-            paymentStatus: 'paid'
+        const summary = calculateCartSummary(cartItems);
+        const paymentData = validateStripeSession(session, summary.totalAmount);
+        const orderId = await persistPaidOrder({
+            orderData: {
+                userId,
+                orderNumber: createOrderNumber(),
+                deliveryAddress: metadata.deliveryAddress || 'Address provided at checkout',
+                contactNumber: metadata.contactNumber || 'N/A',
+                orderNote: metadata.orderNote || null,
+                paymentMethod: 'card',
+                ...summary,
+                status: 'Placed',
+                paymentStatus: 'paid'
+            },
+            cartItems,
+            paymentData
         });
 
-        // Create Order Items
-        await db.createOrderItems(orderId, cartItems);
+        const [order, user] = await Promise.all([
+            db.getOrderById(orderId, userId),
+            req.user?.id === userId ? req.user : db.getUserById(userId)
+        ]);
+        await sendConfirmation(order, user, 'Stripe');
 
-        // Record Payment in DB
-        const transactionId = val_id || tran_id;
-        await db.createPayment({
-            orderId,
-            transactionId,
-            paymentMethod,
-            paymentGateway: 'sslcommerz',
-            amount: totalAmount,
-            currency: 'BDT',
-            status: 'completed',
-            gatewayResponse: JSON.stringify({
-                tran_id,
-                val_id,
-                card_type: payload.card_type,
-                store_amount: payload.store_amount,
-                bank_tran_id: payload.bank_tran_id
-            })
-        });
-
-        // Clear Cart
-        await db.clearCart(userId);
-
-        // Fetch user & order for confirmation email
-        const userObj = (req.user && req.user.id === userId) ? req.user : await db.getUserById(userId);
-        const order = await db.getOrderById(orderId, userId);
-
-        if (order && userObj) {
-            console.log(`Sending order confirmation email to ${userObj.email} for order #${order.order_number}...`);
-            await emailService.sendOrderConfirmationEmail(order, userObj).catch(err => {
-                console.error("Email send error during SSLCommerz checkout:", err);
-            });
-        }
-
-        res.render('customer/payment-success', {
+        return res.render('customer/payment-success', {
             title: 'Payment Successful',
-            user: userObj || req.user,
+            user,
             currentPage: 'checkout',
             order,
-            transactionId,
-            amount: totalAmount,
-            paymentMethod: paymentMethod === 'bkash' ? 'bKash Mobile Wallet (SSLCommerz)' : 'Nagad Digital Wallet (SSLCommerz)'
+            transactionId: order.payment.transaction_id,
+            amount: Number(order.payment.amount),
+            paymentMethod: 'Credit / Debit Card (Stripe)'
         });
-    } catch (err) {
-        console.error("SSLCommerz payment success error:", err);
-        res.redirect('/customer/checkout?error=sslcommerz_processing_failed');
+    } catch (error) {
+        console.error('Stripe payment verification error:', error);
+        const code = error instanceof PaymentValidationError ? error.code : 'payment_verification_failed';
+        return res.redirect(`/customer/checkout?error=${encodeURIComponent(code)}`);
     }
 };
 
-/**
- * Handle SSLCommerz Payment Fail Callback (POST /customer/payment/sslcommerz/fail)
- */
-exports.handleSSLCommerzFail = (req, res) => {
+exports.handleStripeCancel = (_req, res) => {
+    res.redirect('/customer/checkout?payment_status=cancelled&gateway=stripe');
+};
+
+/** Handle SSLCommerz browser success callback. */
+exports.handleSSLCommerzSuccess = async (req, res) => {
+    try {
+        const result = await completeSSLCommerzPayment(req.body || {}, req.user);
+        if (result.existing) {
+            return res.redirect(`/customer/order-tracking/${result.order.id}?placed=1`);
+        }
+
+        const methodLabel = result.order.payment_method === 'nagad'
+            ? 'Nagad Digital Wallet (SSLCommerz)'
+            : 'bKash Mobile Wallet (SSLCommerz)';
+
+        return res.render('customer/payment-success', {
+            title: 'Payment Successful',
+            user: result.user,
+            currentPage: 'checkout',
+            order: result.order,
+            transactionId: result.payment.transaction_id,
+            amount: Number(result.payment.amount),
+            paymentMethod: methodLabel
+        });
+    } catch (error) {
+        console.error('SSLCommerz payment verification error:', error);
+        const code = error instanceof PaymentValidationError ? error.code : 'sslcommerz_processing_failed';
+        return res.redirect(`/customer/checkout?error=${encodeURIComponent(code)}`);
+    }
+};
+
+exports.handleSSLCommerzFail = (_req, res) => {
     res.redirect('/customer/checkout?payment_status=failed&gateway=sslcommerz');
 };
 
-/**
- * Handle SSLCommerz Payment Cancel Callback (POST /customer/payment/sslcommerz/cancel)
- */
-exports.handleSSLCommerzCancel = (req, res) => {
+exports.handleSSLCommerzCancel = (_req, res) => {
     res.redirect('/customer/checkout?payment_status=cancelled&gateway=sslcommerz');
 };
 
-/**
- * Handle SSLCommerz IPN (Server-to-Server) Callback (POST /customer/payment/sslcommerz/ipn)
- */
+/** Handle SSLCommerz server-to-server notification. */
 exports.handleSSLCommerzIPN = async (req, res) => {
     try {
-        const payload = req.body;
-        console.log("Received SSLCommerz IPN notification:", payload);
-        res.status(200).send("IPN Received");
-    } catch (err) {
-        console.error("SSLCommerz IPN error:", err);
-        res.status(500).send("IPN Error");
+        const result = await completeSSLCommerzPayment(req.body || {}, req.user);
+        return res.status(200).send(result.existing ? 'Payment already recorded' : 'Payment recorded');
+    } catch (error) {
+        console.error('SSLCommerz IPN verification error:', error);
+        const status = error instanceof PaymentValidationError ? 400 : 500;
+        return res.status(status).send('Payment verification failed');
     }
 };

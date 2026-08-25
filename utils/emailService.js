@@ -11,6 +11,26 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+function formatDhakaDate(value = new Date()) {
+    let dateValue = value;
+    if (typeof value === 'string' && !value.endsWith('Z') && !value.includes('+')) {
+        dateValue = value.replace(' ', 'T') + 'Z';
+    }
+
+    const date = new Date(dateValue);
+    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+    return safeDate.toLocaleString('en-US', {
+        timeZone: 'Asia/Dhaka',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    }) + ' BST';
+}
+
 exports.sendVerificationEmail = async (email, token) => {
     const verificationUrl = `http://localhost:3000/verify-email/${token}`;
     const message = {
@@ -67,13 +87,14 @@ exports.sendPasswordResetEmail = async (email, token) => {
     }
 };
 
-exports.sendOrderConfirmationEmail = async (order, user) => {
+exports.sendOrderConfirmationEmail = async (order, user, mailTransport = transporter) => {
     if (!order || !user || !user.email) {
         console.error("Invalid order or user data provided for order confirmation email.");
         return false;
     }
 
-    const trackingUrl = `http://localhost:3000/customer/order-tracking/${order.id}`;
+    const baseUrl = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const trackingUrl = `${baseUrl}/customer/order-tracking/${order.id}`;
     
     // Payment method mapping
     const methodNames = {
@@ -83,10 +104,21 @@ exports.sendOrderConfirmationEmail = async (order, user) => {
         nagad: 'Nagad Mobile Banking'
     };
     const paymentMethodLabel = methodNames[order.payment_method] || order.payment_method;
-    const isPaid = order.payment_method !== 'cod';
+    const storedPaymentStatus = String(
+        order.payment_status || order.payment?.status || (order.payment_method === 'cod' ? 'unpaid' : 'pending')
+    ).toLowerCase();
+    const isPaid = ['paid', 'completed', 'succeeded'].includes(storedPaymentStatus);
+    const isFailed = ['failed', 'cancelled', 'canceled'].includes(storedPaymentStatus);
+    const paymentStatusLabel = isPaid
+        ? 'Paid'
+        : (isFailed ? storedPaymentStatus.charAt(0).toUpperCase() + storedPaymentStatus.slice(1) : 'Pending');
     const paymentStatusBadge = isPaid
         ? '<span style="background-color: #10b981; color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.85rem;">Paid</span>'
-        : '<span style="background-color: #f59e0b; color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.85rem;">Pending (Cash on Delivery)</span>';
+        : `<span style="background-color: ${isFailed ? '#ef4444' : '#f59e0b'}; color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.85rem;">${paymentStatusLabel}${order.payment_method === 'cod' && !isFailed ? ' (Cash on Delivery)' : ''}</span>`;
+    const paymentAmount = Number(order.payment?.amount ?? order.total_amount ?? 0);
+    const paymentGateway = order.payment?.payment_gateway
+        ? String(order.payment.payment_gateway).toUpperCase()
+        : (order.payment_method === 'cod' ? 'Cash on Delivery' : 'Pending gateway');
 
     // Format item rows
     const itemsHtml = (order.items || []).map(item => `
@@ -103,31 +135,10 @@ exports.sendOrderConfirmationEmail = async (order, user) => {
         </tr>
     `).join('');
 
-    // Format date in Bangladesh Standard Time (BST, UTC+6 / Asia/Dhaka)
-    let orderDateObj;
-    if (order.created_at) {
-        if (typeof order.created_at === 'string' && !order.created_at.endsWith('Z') && !order.created_at.includes('+')) {
-            orderDateObj = new Date(order.created_at.replace(' ', 'T') + 'Z');
-        } else {
-            orderDateObj = new Date(order.created_at);
-        }
-    } else {
-        orderDateObj = new Date();
-    }
-    if (isNaN(orderDateObj.getTime())) {
-        orderDateObj = new Date();
-    }
-
-    const formattedDate = orderDateObj.toLocaleString('en-US', {
-        timeZone: 'Asia/Dhaka',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-    }) + ' BST';
+    const formattedDate = formatDhakaDate(order.created_at || new Date());
+    const formattedPaymentTime = order.payment?.paid_at
+        ? formatDhakaDate(order.payment.paid_at)
+        : (isPaid ? formattedDate : 'Not paid yet');
 
     const message = {
         from: `"Virtual Try-On" <${process.env.SMTP_USER}>`,
@@ -183,6 +194,18 @@ exports.sendOrderConfirmationEmail = async (order, user) => {
                                     <tr>
                                         <td style="padding: 4px 0; color: #64748b; vertical-align: top;">Payment Status:</td>
                                         <td style="padding: 4px 0; text-align: right; vertical-align: top;">${paymentStatusBadge}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #64748b; vertical-align: top;">Payment Gateway:</td>
+                                        <td style="padding: 4px 0; text-align: right; font-weight: 600; color: #0f172a; vertical-align: top;">${paymentGateway}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #64748b; vertical-align: top;">Payment Amount:</td>
+                                        <td style="padding: 4px 0; text-align: right; font-weight: 600; color: #0f172a; vertical-align: top;">৳${paymentAmount.toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #64748b; vertical-align: top;">Payment Time:</td>
+                                        <td style="padding: 4px 0; text-align: right; font-weight: 600; color: #0f172a; vertical-align: top;">${formattedPaymentTime}</td>
                                     </tr>
                                     ${order.payment ? `
                                     <tr>
@@ -251,11 +274,23 @@ exports.sendOrderConfirmationEmail = async (order, user) => {
                 </div>
             </body>
             </html>
-        `
+        `,
+        text: [
+            `Order Confirmation - #${order.order_number}`,
+            `Customer: ${user.full_name || user.email}`,
+            `Payment Method: ${paymentMethodLabel}`,
+            `Payment Status: ${paymentStatusLabel}`,
+            `Payment Gateway: ${paymentGateway}`,
+            `Transaction ID: ${order.payment?.transaction_id || 'Not available'}`,
+            `Payment Amount: BDT ${paymentAmount.toFixed(2)}`,
+            `Payment Time: ${formattedPaymentTime}`,
+            `Order Total: BDT ${Number(order.total_amount || 0).toFixed(2)}`,
+            `Track Order: ${trackingUrl}`
+        ].join('\n')
     };
 
     try {
-        await transporter.sendMail(message);
+        await mailTransport.sendMail(message);
         console.log(`Order confirmation email sent to ${user.email} for order #${order.order_number}`);
         return true;
     } catch (error) {

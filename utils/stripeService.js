@@ -47,7 +47,9 @@ async function createCheckoutSession({ amount, orderDetails, user, successUrl, c
  * Retrieves a Stripe session by ID to verify payment completion
  */
 async function retrieveSession(sessionId) {
-    return await stripe.checkout.sessions.retrieve(sessionId);
+    return await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['payment_intent']
+    });
 }
 
 module.exports = {
