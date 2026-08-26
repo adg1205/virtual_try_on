@@ -1,4 +1,3 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { createClient } = require('@tursodatabase/serverless/compat');
@@ -27,6 +26,10 @@ if (process.env.VERCEL && !tursoAuthToken) {
     throw new Error('TURSO_AUTH_TOKEN is required on Vercel to authenticate database requests.');
 }
 
+// sqlite3 ships a native binary and is only needed for local development.
+// Loading it in a Turso-backed Vercel function can fail against Vercel's GLIBC
+// version even though production never uses the local database.
+const sqlite3 = usesTurso ? null : require('sqlite3').verbose();
 const db = usesTurso
     ? new LibsqlCallbackDatabase(tursoClient)
     : new sqlite3.Database(dbPath);
