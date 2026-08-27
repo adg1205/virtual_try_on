@@ -1202,7 +1202,15 @@ function createPaidOrderFromCart(orderData, items, paymentData) {
 
 function getUserOrders(userId) {
     return new Promise((resolve, reject) => {
-        const sql = `SELECT o.* FROM orders o WHERE o.user_id = ? ORDER BY o.created_at DESC`;
+        // Keep cancelled records for administrative/payment history, but remove
+        // them from the customer's active order history.
+        const sql = `
+            SELECT o.*
+            FROM orders o
+            WHERE o.user_id = ?
+              AND o.status NOT IN ('Cancelled', 'Cancellation Requested')
+            ORDER BY o.created_at DESC
+        `;
         db.all(sql, [userId], (err, rows) => {
             if (err) reject(err);
             else if (!rows.length) resolve([]);
@@ -1262,7 +1270,7 @@ function cancelOrder(orderId, userId) {
     return new Promise((resolve, reject) => {
         const sql = `
             UPDATE orders
-            SET status = 'Cancellation Requested',
+            SET status = 'Cancelled',
                 cancellation_requested_at = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -1380,7 +1388,12 @@ function deleteReview(reviewId, userId) {
 
 function getUserOrderCount(userId) {
     return new Promise((resolve, reject) => {
-        const sql = `SELECT COUNT(*) AS total_orders FROM orders WHERE user_id = ? AND status != 'Cancelled'`;
+        const sql = `
+            SELECT COUNT(*) AS total_orders
+            FROM orders
+            WHERE user_id = ?
+              AND status NOT IN ('Cancelled', 'Cancellation Requested')
+        `;
         db.get(sql, [userId], (err, row) => {
             if (err) reject(err);
             else resolve(row ? row.total_orders : 0);

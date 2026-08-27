@@ -3,10 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', async event => {
             const activeButton = event.currentTarget;
             const orderId = Number(activeButton.dataset.orderId);
-            if (!orderId || !window.confirm('Request cancellation for this order?')) return;
+            if (!orderId || !window.confirm('Cancel this order? It will be removed from My Orders.')) return;
 
             activeButton.disabled = true;
-            activeButton.textContent = 'Requesting...';
+            activeButton.textContent = 'Cancelling...';
 
             try {
                 const response = await fetch('/customer/orders/cancel', {
@@ -15,21 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ orderId })
                 });
                 const data = await response.json();
-                if (!response.ok || !data.success) throw new Error(data.error || 'Cancellation request failed.');
+                if (!response.ok || !data.success) throw new Error(data.error || 'Order cancellation failed.');
 
-                const badge = document.getElementById(`order-status-badge-${orderId}`);
-                if (badge) {
-                    badge.textContent = data.status || 'Cancellation Requested';
-                    badge.className = 'mo-status-badge mo-status-cancelled';
-                } else {
-                    window.location.reload();
-                    return;
-                }
-                activeButton.remove();
+                // Reload from the server so the cancelled row disappears and the
+                // empty state is rendered correctly when this was the last order.
+                window.location.reload();
             } catch (error) {
-                window.alert(error.message || 'Could not request cancellation.');
+                window.alert(error.message || 'Could not cancel the order.');
                 activeButton.disabled = false;
-                activeButton.textContent = 'Request cancellation';
+                activeButton.textContent = 'Cancel order';
             }
         });
     });

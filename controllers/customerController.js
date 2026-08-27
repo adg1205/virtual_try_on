@@ -700,17 +700,18 @@ exports.renderMyOrders = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
     try {
-        const { orderId } = req.body;
-        if (!orderId) {
-            return res.status(400).json({ success: false, error: 'Missing orderId' });
+        const orderId = Number.parseInt(req.body.orderId, 10);
+        if (!Number.isInteger(orderId) || orderId <= 0) {
+            return res.status(400).json({ success: false, error: 'A valid orderId is required' });
         }
 
-        const changes = await db.cancelOrder(parseInt(orderId, 10), req.user.id);
+        const changes = await db.cancelOrder(orderId, req.user.id);
         if (changes === 0) {
             return res.status(409).json({ success: false, error: 'Cancellation is only available before the order starts processing.' });
         }
 
-        return res.json({ success: true, status: 'Cancellation Requested' });
+        const orderCount = await db.getUserOrderCount(req.user.id);
+        return res.json({ success: true, status: 'Cancelled', orderCount });
     } catch (err) {
         console.error("Error cancelling order:", err);
         return res.status(500).json({ success: false, error: 'Failed to cancel order' });

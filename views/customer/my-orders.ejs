@@ -20,9 +20,9 @@
                 <!-- EMPTY ORDERS STATE -->
                 <div class="glass-panel text-center mx-auto my-4 rounded-4 p-5" style="max-width: 600px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);">
                     <div class="fs-1 mb-3">📦</div>
-                    <h3 class="font-weight-700 text-white mb-2 fs-4">No Orders Placed Yet</h3>
+                    <h3 class="font-weight-700 text-white mb-2 fs-4">No Active Orders</h3>
                     <p class="text-muted-custom small mx-auto mb-4" style="max-width: 450px; line-height: 1.6;">
-                        You haven't placed any orders yet. Discover our premium frame collections and place your first order today!
+                        You currently have no active orders. Discover our premium frame collections and place a new order today!
                     </p>
                     <a href="/customer/frame-catalog" class="btn btn-primary rounded-pill px-4 py-2 font-weight-700 d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
                         <span>👓</span> Explore Catalog
@@ -112,7 +112,7 @@
                                             </a>
                                             <% if (['Placed', 'Confirmed'].includes(order.status)) { %>
                                                 <button type="button" class="btn btn-sm btn-cancel-order rounded-pill px-3 py-1 small" data-order-id="<%= order.id %>">
-                                                    Request cancellation
+                                                    Cancel order
                                                 </button>
                                             <% } %>
                                         </div>

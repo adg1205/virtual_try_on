@@ -11,7 +11,7 @@ const db = require('../models/Database');
 const { normalizeOverlaySettings, validateTryOnImageData } = require('../utils/tryOnService');
 const { calculateCartSummary, createOrderNumber } = require('../utils/cartService');
 
-test('persists saved looks and wishlists by user and enforces cancellation stages', async context => {
+test('persists saved looks and wishlists by user and immediately hides cancelled orders', async context => {
     context.after(async () => {
         await db.closeDatabase();
         fs.rmSync(tempDirectory, { recursive: true, force: true });
@@ -71,10 +71,18 @@ test('persists saved looks and wishlists by user and enforces cancellation stage
     const orders = await db.getUserOrders(firstUser.id);
     assert.equal(orders[0].items[0].frame_name, frame.name);
     assert.equal(orders[0].total_items, 2);
+    assert.equal(await db.getUserOrderCount(firstUser.id), 1);
     await db.updateOrderStatus(orderId, 'Confirmed');
     assert.equal(await db.cancelOrder(orderId, firstUser.id), 1);
-    assert.equal((await db.getOrderById(orderId, firstUser.id)).status, 'Cancellation Requested');
+    assert.equal((await db.getOrderById(orderId, firstUser.id)).status, 'Cancelled');
+    assert.deepEqual(await db.getUserOrders(firstUser.id), []);
+    assert.equal(await db.getUserOrderCount(firstUser.id), 0);
     assert.equal(await db.cancelOrder(orderId, firstUser.id), 0);
+
+    // Older databases may still contain the previous intermediate status.
+    await db.updateOrderStatus(orderId, 'Cancellation Requested');
+    assert.deepEqual(await db.getUserOrders(firstUser.id), []);
+    assert.equal(await db.getUserOrderCount(firstUser.id), 0);
 
     assert.equal(validateTryOnImageData('data:image/jpeg;base64,YQ==').valid, true);
     assert.equal(validateTryOnImageData('https://example.test/not-a-data-url.jpg').valid, false);
