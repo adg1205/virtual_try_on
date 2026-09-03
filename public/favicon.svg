@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VirtualTryOn">
+  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <path d="M8 25.5h6m36 0h6M29 27c1.8-1.4 4.2-1.4 6 0" fill="none" stroke="#67e8f9" stroke-width="4" stroke-linecap="round"/>
+  <path d="M14 23h12c2.2 0 4 1.8 4 4v3c0 5-4 9-9 9s-9-4-9-9v-5c0-1.1.9-2 2-2Zm24 0h12c1.1 0 2 .9 2 2v5c0 5-4 9-9 9s-9-4-9-9v-3c0-2.2 1.8-4 4-4Z" fill="#164e63" stroke="#67e8f9" stroke-width="3"/>
+  <path d="M20 45h24" stroke="#a5f3fc" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+</svg>

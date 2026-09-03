@@ -18,6 +18,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
+// Some browsers and crawlers still request the conventional favicon path even
+// when the document declares a different icon format. Keep that request out of
+// the application router and point it at the SVG served from public/.
+app.get('/favicon.ico', (_req, res) => res.redirect(308, '/favicon.svg'));
+
 // Serve the pinned Bootstrap distribution locally so the interface remains usable
 // without relying on a third-party CDN at runtime.
 app.use('/vendor/bootstrap', express.static(path.join(__dirname, 'node_modules', 'bootstrap', 'dist')));
